@@ -7,516 +7,472 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
-  <script src="https://cdn.tailwindcss.com"></script>
   <style>
-    body { margin: 0; background: #0a0a0a; color: white; font-family: sans-serif; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #0a0a0a; color: white; font-family: sans-serif; }
+    button { cursor: pointer; }
+    textarea { font-family: sans-serif; }
   </style>
 </head>
 <body>
-  <div id="root"></div>
-  <script type="text/babel">
-    const { useState, useEffect, useRef } = React;
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect, useRef } = React;
 
-    // ── SUPABASE CONFIG ──
-    const SUPABASE_URL = 'https://deafcxizysvbnbgailno.supabase.co';
-    const SUPABASE_KEY = 'sb_publishable_G1-WfUDe-Yq8aFxghbWYSA_Xxu7awui';
+const SUPABASE_URL = 'https://deafcxizysvbnbgailno.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_G1-WfUDe-Yq8aFxghbWYSA_Xxu7awui';
+const KEY_STATE    = 'sp-state-v1';
+const KEY_ORDERS   = 'sp-orders-v1';
+const POLL_MS      = 5000;
 
-    const sbFetch = async (method, path, body) => {
-      const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
-        method,
-        headers: {
-          'apikey': SUPABASE_KEY,
-          'Authorization': `Bearer ${SUPABASE_KEY}`,
-          'Content-Type': 'application/json',
-          'Prefer': method === 'POST' ? 'resolution=merge-duplicates' : '',
-        },
-        body: body ? JSON.stringify(body) : undefined,
-      });
-      if (method === 'GET') return res.json();
-      return res.ok;
-    };
+async function dbGet(key) {
+  try {
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/kv?key=eq.${key}&select=value`, {
+      headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` }
+    });
+    const rows = await r.json();
+    if (rows && rows.length) return JSON.parse(rows[0].value);
+  } catch(_) {}
+  try { return JSON.parse(localStorage.getItem(key)); } catch(_) { return null; }
+}
 
-    const DB = {
-      get: async (key) => {
-        try {
-          const rows = await sbFetch('GET', `kv?key=eq.${key}&select=value`);
-          if (rows?.length) return JSON.parse(rows[0].value);
-        } catch (_) {}
-        try { return JSON.parse(localStorage.getItem(key)); } catch { return null; }
+async function dbSet(key, val) {
+  const body = JSON.stringify({ key, value: JSON.stringify(val) });
+  try {
+    await fetch(`${SUPABASE_URL}/rest/v1/kv`, {
+      method: 'POST',
+      headers: {
+        apikey: SUPABASE_KEY,
+        Authorization: `Bearer ${SUPABASE_KEY}`,
+        'Content-Type': 'application/json',
+        Prefer: 'resolution=merge-duplicates'
       },
-      set: async (key, val) => {
-        try {
-          await sbFetch('POST', 'kv', { key, value: JSON.stringify(val) });
-        } catch (_) {}
-        try { localStorage.setItem(key, JSON.stringify(val)); } catch (_) {}
-        return true;
-      },
-    };
+      body
+    });
+  } catch(_) {}
+  try { localStorage.setItem(key, JSON.stringify(val)); } catch(_) {}
+}
 
-    const KEY_STATE = 'spacepadel-state-v1';
-    const KEY_ORDERS = 'spacepadel-orders-v1';
-    const POLL_MS = 5000;
+const FASES = [
+  { id:1,  nombre:'Moldeado',               responsable:'Queva'     },
+  { id:2,  nombre:'Eliminación de rebabas', responsable:'Rubén'     },
+  { id:3,  nombre:'Lijado 1',               responsable:'Rubén'     },
+  { id:4,  nombre:'Imprimación',            responsable:'Juan Ángel'},
+  { id:5,  nombre:'Lijado 2',               responsable:'Rubén'     },
+  { id:6,  nombre:'Pintura',                responsable:'Juan Ángel'},
+  { id:7,  nombre:'Diseño',                 responsable:'Juan Ángel'},
+  { id:8,  nombre:'Barnizado',              responsable:'Juan Ángel'},
+  { id:9,  nombre:'Empaquetado',            responsable:'Juan Ángel'},
+  { id:10, nombre:'Enviado',                responsable:'Juan Ángel'},
+];
+const TRABAJADORES = [
+  { nombre:'Queva',      horasDia:4, diasSemana:5, fases:[1] },
+  { nombre:'Rubén',      horasDia:4, diasSemana:5, fases:[2,3,5] },
+  { nombre:'Juan Ángel', horasDia:8, diasSemana:6, fases:[4,6,7,8,9,10] },
+];
+const AUTORES = ['Queva','Rubén','Juan Ángel','Supervisor'];
+const ORDERS = [
+  { id:'gid://shopify/Order/8460760580430',  name:'#1538', createdAt:'2026-05-11T12:38:25Z', customerName:'Cliente (invitado)',          financialStatus:'PENDING', fulfillmentStatus:'UNFULFILLED', cancelledAt:null, note:null,                                                                     lineItems:[{title:'pala el bosque',quantity:1}] },
+  { id:'gid://shopify/Order/8490862182734',  name:'#1543', createdAt:'2026-05-20T19:30:07Z', customerName:'Cliente (invitado)',          financialStatus:'PENDING', fulfillmentStatus:'UNFULFILLED', cancelledAt:null, note:null,                                                                     lineItems:[{title:'jaime iñaki',quantity:1}] },
+  { id:'gid://shopify/Order/8519371751758',  name:'#1544', createdAt:'2026-05-25T02:08:25Z', customerName:'Matin Vera Bacovic',          financialStatus:'PAID',    fulfillmentStatus:'UNFULFILLED', cancelledAt:null, note:null,                                                                     lineItems:[{title:'pala personalizada',quantity:1}] },
+  { id:'gid://shopify/Order/8541800399182',  name:'#1545', createdAt:'2026-05-31T17:28:49Z', customerName:'Cliente (invitado)',          financialStatus:'PENDING', fulfillmentStatus:'UNFULFILLED', cancelledAt:null, note:'Gold tiger',                                                             lineItems:[{title:'Pala personalizada PRO',quantity:2}] },
+  { id:'gid://shopify/Order/8544062210382',  name:'#1546', createdAt:'2026-06-01T10:11:25Z', customerName:'Cliente (invitado)',          financialStatus:'PENDING', fulfillmentStatus:'UNFULFILLED', cancelledAt:null, note:'adri garcia',                                                            lineItems:[{title:'pala personalizada',quantity:1},{title:'pala personalizada diamante',quantity:1}] },
+  { id:'gid://shopify/Order/8544065749326',  name:'#1547', createdAt:'2026-06-01T10:13:08Z', customerName:'Cliente (invitado)',          financialStatus:'PENDING', fulfillmentStatus:'UNFULFILLED', cancelledAt:null, note:null,                                                                     lineItems:[{title:'pala junior boda',quantity:2}] },
+  { id:'gid://shopify/Order/8544097993038',  name:'#1548', createdAt:'2026-06-01T10:27:45Z', customerName:'Cliente (invitado)',          financialStatus:'PENDING', fulfillmentStatus:'UNFULFILLED', cancelledAt:null, note:'luis 18k roja lagrima',                                                  lineItems:[{title:'pala personalizada luis',quantity:1}] },
+  { id:'gid://shopify/Order/8548190093646',  name:'#1549', createdAt:'2026-06-02T10:36:42Z', customerName:'Cliente (invitado)',          financialStatus:'PENDING', fulfillmentStatus:'UNFULFILLED', cancelledAt:null, note:'molde diamante \n12k\nctrl \n',                                          lineItems:[{title:'pala maxi',quantity:1}] },
+  { id:'gid://shopify/Order/8548191732046',  name:'#1550', createdAt:'2026-06-02T10:37:22Z', customerName:'Cliente (invitado)',          financialStatus:'PENDING', fulfillmentStatus:'UNFULFILLED', cancelledAt:null, note:'18k\nctrl\nlagrima\n',                                                   lineItems:[{title:'pala monica',quantity:1}] },
+  { id:'gid://shopify/Order/8554841932110',  name:'#1551', createdAt:'2026-06-03T05:35:29Z', customerName:'Cliente (invitado)',          financialStatus:'PAID',    fulfillmentStatus:'UNFULFILLED', cancelledAt:null, note:null,                                                                     lineItems:[{title:'dani garcía',quantity:3}] },
+  { id:'gid://shopify/Order/8554844062030',  name:'#1552', createdAt:'2026-06-03T05:36:23Z', customerName:'Cliente (invitado)',          financialStatus:'PAID',    fulfillmentStatus:'UNFULFILLED', cancelledAt:null, note:'regalo profesor',                                                        lineItems:[{title:'pala profesora',quantity:1}] },
+  { id:'gid://shopify/Order/8554847863118',  name:'#1553', createdAt:'2026-06-03T05:38:04Z', customerName:'Cliente (invitado)',          financialStatus:'PAID',    fulfillmentStatus:'UNFULFILLED', cancelledAt:null, note:'lagrima\n12k \nhybr',                                                    lineItems:[{title:'daniel marcelo',quantity:1}] },
+  { id:'gid://shopify/Order/8554853892430',  name:'#1554', createdAt:'2026-06-03T05:40:41Z', customerName:'Cliente (invitado)',          financialStatus:'PAID',    fulfillmentStatus:'UNFULFILLED', cancelledAt:null, note:'diamante 18k hybr\n\n+34 652 66 91 09\n\n',                              lineItems:[{title:'pala personalizada',quantity:1}] },
+  { id:'gid://shopify/Order/8554856677710',  name:'#1555', createdAt:'2026-06-03T05:42:07Z', customerName:'Cliente (invitado)',          financialStatus:'PAID',    fulfillmentStatus:'UNFULFILLED', cancelledAt:null, note:'junior de fibra de carbono (1 carbono 3k normal y 1 de vidrio)',        lineItems:[{title:'junior de carbono',quantity:1}] },
+  { id:'gid://shopify/Order/8556580208974',  name:'#1556', createdAt:'2026-06-03T14:26:31Z', customerName:'Cliente (invitado)',          financialStatus:'PAID',    fulfillmentStatus:'UNFULFILLED', cancelledAt:null, note:'12k ctrl lagrima\n+34 654 33 00 47',                                     lineItems:[{title:'pala personalizada',quantity:1}] },
+];
 
-    const FASES = [
-      { id: 1, nombre: 'Moldeado', responsable: 'Queva' },
-      { id: 2, nombre: 'Eliminación de rebabas', responsable: 'Rubén' },
-      { id: 3, nombre: 'Lijado 1', responsable: 'Rubén' },
-      { id: 4, nombre: 'Imprimación', responsable: 'Juan Ángel' },
-      { id: 5, nombre: 'Lijado 2', responsable: 'Rubén' },
-      { id: 6, nombre: 'Pintura', responsable: 'Juan Ángel' },
-      { id: 7, nombre: 'Diseño', responsable: 'Juan Ángel' },
-      { id: 8, nombre: 'Barnizado', responsable: 'Juan Ángel' },
-      { id: 9, nombre: 'Empaquetado', responsable: 'Juan Ángel' },
-      { id: 10, nombre: 'Enviado', responsable: 'Juan Ángel' },
-    ];
-
-    const TRABAJADORES = [
-      { nombre: 'Queva', horasDia: 4, diasSemana: 5, fases: [1] },
-      { nombre: 'Rubén', horasDia: 4, diasSemana: 5, fases: [2, 3, 5] },
-      { nombre: 'Juan Ángel', horasDia: 8, diasSemana: 6, fases: [4, 6, 7, 8, 9, 10] },
-    ];
-
-    const AUTORES = ['Queva', 'Rubén', 'Juan Ángel', 'Supervisor'];
-
-    const ORDERS_FALLBACK = [
-      { id: 'gid://shopify/Order/8460760580430', name: '#1538', createdAt: '2026-05-11T12:38:25Z', customerName: 'Cliente (invitado)', financialStatus: 'PENDING', fulfillmentStatus: 'UNFULFILLED', cancelledAt: null, note: null, lineItems: [{ title: 'pala el bosque', quantity: 1 }] },
-      { id: 'gid://shopify/Order/8490862182734', name: '#1543', createdAt: '2026-05-20T19:30:07Z', customerName: 'Cliente (invitado)', financialStatus: 'PENDING', fulfillmentStatus: 'UNFULFILLED', cancelledAt: null, note: null, lineItems: [{ title: 'jaime iñaki', quantity: 1 }] },
-      { id: 'gid://shopify/Order/8519371751758', name: '#1544', createdAt: '2026-05-25T02:08:25Z', customerName: 'Matin Vera Bacovic', financialStatus: 'PAID', fulfillmentStatus: 'UNFULFILLED', cancelledAt: null, note: null, lineItems: [{ title: 'pala personalizada', quantity: 1 }] },
-      { id: 'gid://shopify/Order/8541800399182', name: '#1545', createdAt: '2026-05-31T17:28:49Z', customerName: 'Cliente (invitado)', financialStatus: 'PENDING', fulfillmentStatus: 'UNFULFILLED', cancelledAt: null, note: 'Gold tiger', lineItems: [{ title: 'Pala personalizada PRO', quantity: 2 }] },
-      { id: 'gid://shopify/Order/8544062210382', name: '#1546', createdAt: '2026-06-01T10:11:25Z', customerName: 'Cliente (invitado)', financialStatus: 'PENDING', fulfillmentStatus: 'UNFULFILLED', cancelledAt: null, note: 'adri garcia', lineItems: [{ title: 'pala personalizada', quantity: 1 }, { title: 'pala personalizada diamante', quantity: 1 }] },
-      { id: 'gid://shopify/Order/8544065749326', name: '#1547', createdAt: '2026-06-01T10:13:08Z', customerName: 'Cliente (invitado)', financialStatus: 'PENDING', fulfillmentStatus: 'UNFULFILLED', cancelledAt: null, note: null, lineItems: [{ title: 'pala junior boda', quantity: 2 }] },
-      { id: 'gid://shopify/Order/8544097993038', name: '#1548', createdAt: '2026-06-01T10:27:45Z', customerName: 'Cliente (invitado)', financialStatus: 'PENDING', fulfillmentStatus: 'UNFULFILLED', cancelledAt: null, note: 'luis 18k roja lagrima', lineItems: [{ title: 'pala personalizada luis', quantity: 1 }] },
-      { id: 'gid://shopify/Order/8548190093646', name: '#1549', createdAt: '2026-06-02T10:36:42Z', customerName: 'Cliente (invitado)', financialStatus: 'PENDING', fulfillmentStatus: 'UNFULFILLED', cancelledAt: null, note: 'molde diamante \n12k\nctrl \n', lineItems: [{ title: 'pala maxi', quantity: 1 }] },
-      { id: 'gid://shopify/Order/8548191732046', name: '#1550', createdAt: '2026-06-02T10:37:22Z', customerName: 'Cliente (invitado)', financialStatus: 'PENDING', fulfillmentStatus: 'UNFULFILLED', cancelledAt: null, note: '18k\nctrl\nlagrima\n', lineItems: [{ title: 'pala monica', quantity: 1 }] },
-      { id: 'gid://shopify/Order/8554841932110', name: '#1551', createdAt: '2026-06-03T05:35:29Z', customerName: 'Cliente (invitado)', financialStatus: 'PAID', fulfillmentStatus: 'UNFULFILLED', cancelledAt: null, note: null, lineItems: [{ title: 'dani garcía', quantity: 3 }] },
-      { id: 'gid://shopify/Order/8554844062030', name: '#1552', createdAt: '2026-06-03T05:36:23Z', customerName: 'Cliente (invitado)', financialStatus: 'PAID', fulfillmentStatus: 'UNFULFILLED', cancelledAt: null, note: 'regalo profesor', lineItems: [{ title: 'pala profesora', quantity: 1 }] },
-      { id: 'gid://shopify/Order/8554847863118', name: '#1553', createdAt: '2026-06-03T05:38:04Z', customerName: 'Cliente (invitado)', financialStatus: 'PAID', fulfillmentStatus: 'UNFULFILLED', cancelledAt: null, note: 'lagrima\n12k \nhybr', lineItems: [{ title: 'daniel marcelo', quantity: 1 }] },
-      { id: 'gid://shopify/Order/8554853892430', name: '#1554', createdAt: '2026-06-03T05:40:41Z', customerName: 'Cliente (invitado)', financialStatus: 'PAID', fulfillmentStatus: 'UNFULFILLED', cancelledAt: null, note: 'diamante 18k hybr\n\n+34 652 66 91 09\n\n', lineItems: [{ title: 'pala personalizada', quantity: 1 }] },
-      { id: 'gid://shopify/Order/8554856677710', name: '#1555', createdAt: '2026-06-03T05:42:07Z', customerName: 'Cliente (invitado)', financialStatus: 'PAID', fulfillmentStatus: 'UNFULFILLED', cancelledAt: null, note: 'junior de fibra de carbono (1 carbono 3k normal y 1 de vidrio)', lineItems: [{ title: 'junior de carbono', quantity: 1 }] },
-      { id: 'gid://shopify/Order/8556580208974', name: '#1556', createdAt: '2026-06-03T14:26:31Z', customerName: 'Cliente (invitado)', financialStatus: 'PAID', fulfillmentStatus: 'UNFULFILLED', cancelledAt: null, note: '12k ctrl lagrima\n+34 654 33 00 47', lineItems: [{ title: 'pala personalizada', quantity: 1 }] },
-    ];
-
-    function buildPalas(orders, stored) {
-      const out = {};
-      orders.filter(o => o.fulfillmentStatus !== 'FULFILLED').forEach(order => {
-        let idx = 0;
-        (order.lineItems || []).forEach(item => {
-          for (let i = 0; i < (item.quantity || 1); i++) {
-            idx++;
-            const id = `${order.name}-P${idx}`;
-            const base = {
-              id, orderName: order.name, customer: order.customerName, product: item.title,
-              orderCreatedAt: order.createdAt, pago: order.financialStatus, shopifyNote: order.note || null,
-              lastModified: Date.now(),
-              phases: FASES.map(f => ({ id: f.id, status: 'pendiente', startedAt: null, finishedAt: null })),
-              notes: [],
-            };
-            out[id] = stored[id]
-              ? { ...base, phases: stored[id].phases, notes: stored[id].notes, lastModified: stored[id].lastModified || base.lastModified }
-              : base;
-          }
-        });
-      });
-      return out;
-    }
-
-    function faseActualId(pala) {
-      const enProceso = pala.phases.find(p => p.status === 'en_proceso');
-      if (enProceso) return enProceso.id;
-      const pendiente = pala.phases.find(p => p.status === 'pendiente');
-      if (!pendiente) return null;
-      if (pendiente.id === 1) return 1;
-      const prev = pala.phases.find(p => p.id === pendiente.id - 1);
-      return prev?.status === 'completada' ? pendiente.id : null;
-    }
-    function estaCompletada(p) { return p.phases.every(f => f.status === 'completada'); }
-    function progresoPala(p) { return Math.round(p.phases.filter(f => f.status === 'completada').length / FASES.length * 100); }
-    function tieneAnomalia(p) { return p.notes.some(n => n.type === 'anomalia'); }
-    function tieneNotaInfo(p) { return p.notes.some(n => n.type === 'info'); }
-    function fmt(ts) { if (!ts) return '—'; return new Date(ts).toLocaleString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }); }
-    function fmtFecha(ts) { return new Date(ts).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }); }
-    function fmtHora(ts) { if (!ts) return '—'; return new Date(ts).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }); }
-
-    // ── BADGES ──
-    function EstadoBadge({ status }) {
-      const styles = {
-        pendiente: { background: '#222', color: '#aaa', border: '1px solid #444' },
-        en_proceso: { background: '#3a2e00', color: '#f5c518', border: '1px solid #f5c518' },
-        completada: { background: '#0d2e0d', color: '#4ade80', border: '1px solid #4ade80' },
-      };
-      const dots = { pendiente: '#666', en_proceso: '#f5c518', completada: '#4ade80' };
-      const txt = { pendiente: 'Pendiente', en_proceso: 'En proceso', completada: 'Completada' };
-      return <span style={{ ...styles[status], display:'inline-flex', alignItems:'center', gap:6, padding:'4px 12px', borderRadius:999, fontSize:14, fontWeight:600 }}>
-        <span style={{ width:10, height:10, borderRadius:'50%', background: dots[status], display:'inline-block' }} />
-        {txt[status]}
-      </span>;
-    }
-    function PagoBadge({ pago }) {
-      if (pago !== 'PENDING') return null;
-      return <span style={{ background:'#2e1a00', color:'#fb923c', border:'1px solid #fb923c', padding:'3px 10px', borderRadius:999, fontSize:12, fontWeight:600 }}>💳 Pago pendiente</span>;
-    }
-    function BarraProgreso({ pct }) {
-      return <div style={{ width:'100%', background:'#222', borderRadius:999, height:12, overflow:'hidden' }}>
-        <div style={{ width:`${pct}%`, height:12, background: pct===100?'#4ade80':'#f5c518', borderRadius:999, transition:'width 0.3s' }} />
-      </div>;
-    }
-    function IndicadoresIconos({ pala }) {
-      return <span style={{ display:'inline-flex', gap:4 }}>
-        {tieneAnomalia(pala) && <span title="Anomalía">⚠️</span>}
-        {pala.shopifyNote && <span title={pala.shopifyNote}>💬</span>}
-        {tieneNotaInfo(pala) && <span title="Nota interna">📝</span>}
-      </span>;
-    }
-
-    // ── APP ──
-    function App() {
-      const [palas, setPalas] = useState({});
-      const [orders, setOrders] = useState(ORDERS_FALLBACK);
-      const [vista, setVista] = useState('dashboard');
-      const [palaSel, setPalaSel] = useState(null);
-      const [trabajadorSel, setTrabajadorSel] = useState(TRABAJADORES[0].nombre);
-      const [saveStatus, setSaveStatus] = useState('idle');
-      const [saveTime, setSaveTime] = useState(null);
-      const justLoaded = useRef(true);
-
-      // Carga inicial instantánea
-      useEffect(() => {
-        setPalas(buildPalas(ORDERS_FALLBACK, {}));
-        justLoaded.current = true;
-        (async () => {
-          const [stOrders, st] = await Promise.all([DB.get(KEY_ORDERS), DB.get(KEY_STATE)]);
-          const ord = stOrders?.orders?.length ? stOrders.orders : ORDERS_FALLBACK;
-          setOrders(ord);
-          justLoaded.current = true;
-          setPalas(buildPalas(ord, st?.palas || {}));
-          justLoaded.current = true;
-        })();
-      }, []);
-
-      // Autosave
-      useEffect(() => {
-        if (!Object.keys(palas).length) return;
-        if (justLoaded.current) { justLoaded.current = false; return; }
-        setSaveStatus('saving');
-        DB.set(KEY_STATE, { palas, modified: Date.now() }).then(() => {
-          setSaveStatus('saved'); setSaveTime(Date.now());
-          if (BC) BC.postMessage({ type: 'STATE_UPDATE', palas, modified: Date.now() });
-        });
-      }, [palas]);
-
-      // Sync entre dispositivos via BroadcastChannel
-      useEffect(() => {
-        if (!BC) return;
-        BC.onmessage = (e) => {
-          if (e.data.type === 'STATE_UPDATE') {
-            setPalas(local => {
-              const merged = { ...local };
-              let changed = false;
-              for (const [id, remote] of Object.entries(e.data.palas)) {
-                if (!local[id] || (remote.lastModified || 0) > (local[id]?.lastModified || 0)) {
-                  merged[id] = remote; changed = true;
-                }
-              }
-              return changed ? merged : local;
-            });
-          }
-          if (e.data.type === 'ORDERS_UPDATE') {
-            setOrders(e.data.orders);
-            setPalas(prev => buildPalas(e.data.orders, prev));
-          }
+function buildPalas(orders, stored) {
+  const out = {};
+  orders.filter(o => o.fulfillmentStatus !== 'FULFILLED').forEach(order => {
+    let idx = 0;
+    (order.lineItems||[]).forEach(item => {
+      for (let i = 0; i < (item.quantity||1); i++) {
+        idx++;
+        const id = `${order.name}-P${idx}`;
+        const base = {
+          id, orderName:order.name, customer:order.customerName, product:item.title,
+          orderCreatedAt:order.createdAt, pago:order.financialStatus, shopifyNote:order.note||null,
+          lastModified: Date.now(),
+          phases: FASES.map(f => ({ id:f.id, status:'pendiente', startedAt:null, finishedAt:null })),
+          notes: [],
         };
-        return () => { BC.onmessage = null; };
-      }, []);
-
-      // Acciones
-      function iniciarFase(palaId, faseId) {
-        setPalas(prev => { const p = prev[palaId]; return { ...prev, [palaId]: { ...p, lastModified: Date.now(), phases: p.phases.map(f => f.id === faseId ? { ...f, status: 'en_proceso', startedAt: new Date().toISOString() } : f) } }; });
+        out[id] = stored[id]
+          ? { ...base, phases:stored[id].phases, notes:stored[id].notes, lastModified:stored[id].lastModified||base.lastModified }
+          : base;
       }
-      function completarFase(palaId, faseId) {
-        setPalas(prev => { const p = prev[palaId]; return { ...prev, [palaId]: { ...p, lastModified: Date.now(), phases: p.phases.map(f => f.id === faseId ? { ...f, status: 'completada', finishedAt: new Date().toISOString() } : f) } }; });
-      }
-      function añadirNota(palaId, { texto, tipo, autor }) {
-        setPalas(prev => {
-          const p = prev[palaId];
-          const fId = faseActualId(p);
-          const fase = FASES.find(f => f.id === fId);
-          const nota = { id: `${palaId}-${Date.now()}`, text: texto, type: tipo, author: autor, phaseId: fId, phaseName: fase?.nombre || '—', timestamp: new Date().toISOString() };
-          return { ...prev, [palaId]: { ...p, lastModified: Date.now(), notes: [...p.notes, nota] } };
-        });
-      }
+    });
+  });
+  return out;
+}
 
-      const listaPalas = Object.values(palas);
-      const saveDot = saveStatus === 'saved' ? '#4ade80' : saveStatus === 'saving' ? '#f5c518' : '#555';
-      const saveLabel = saveStatus === 'saving' ? 'Guardando…' : saveStatus === 'saved' ? `Guardado ${fmtHora(saveTime)}` : 'Sin cambios';
+function faseActualId(pala) {
+  const ep = pala.phases.find(p => p.status === 'en_proceso');
+  if (ep) return ep.id;
+  const pend = pala.phases.find(p => p.status === 'pendiente');
+  if (!pend) return null;
+  if (pend.id === 1) return 1;
+  const prev = pala.phases.find(p => p.id === pend.id - 1);
+  return prev?.status === 'completada' ? pend.id : null;
+}
+function estaCompletada(p) { return p.phases.every(f => f.status === 'completada'); }
+function progreso(p)       { return Math.round(p.phases.filter(f => f.status === 'completada').length / FASES.length * 100); }
+function tieneAnomalia(p)  { return p.notes.some(n => n.type === 'anomalia'); }
+function tieneInfo(p)      { return p.notes.some(n => n.type === 'info'); }
+function fmt(ts)    { if (!ts) return '—'; return new Date(ts).toLocaleString('es-ES',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}); }
+function fmtF(ts)   { return new Date(ts).toLocaleDateString('es-ES',{day:'2-digit',month:'2-digit',year:'numeric'}); }
+function fmtH(ts)   { if (!ts) return '—'; return new Date(ts).toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'}); }
 
-      return (
-        <div style={{ minHeight:'100vh', background:'#0a0a0a', color:'white' }}>
-          <header style={{ background:'#111', borderBottom:'1px solid #333', position:'sticky', top:0, zIndex:20 }}>
-            <div style={{ maxWidth:900, margin:'0 auto', padding:'12px 16px', display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:12 }}>
-              <div>
-                <div style={{ fontSize:22, fontWeight:900, letterSpacing:2, color:'white' }}>SPACEPADEL</div>
-                <div style={{ fontSize:12, color:'#888' }}>🛒 {orders.length} pedidos · {listaPalas.length} palas</div>
-              </div>
-              <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
-                <div style={{ display:'flex', alignItems:'center', gap:6, fontSize:12, color:'#888', background:'#1a1a1a', border:'1px solid #333', borderRadius:8, padding:'6px 10px' }}>
-                  <span style={{ width:8, height:8, borderRadius:'50%', background:saveDot, display:'inline-block' }} />
-                  {saveLabel}
-                </div>
-                <button onClick={() => { setVista('dashboard'); setPalaSel(null); }} style={{ padding:'10px 18px', borderRadius:10, fontWeight:700, fontSize:15, border:'none', cursor:'pointer', background: vista==='dashboard'?'#f5c518':'#222', color: vista==='dashboard'?'#000':'#fff' }}>📋 Dashboard</button>
-                <button onClick={() => { setVista('trabajador'); setPalaSel(null); }} style={{ padding:'10px 18px', borderRadius:10, fontWeight:700, fontSize:15, border:'none', cursor:'pointer', background: vista==='trabajador'?'#f5c518':'#222', color: vista==='trabajador'?'#000':'#fff' }}>👷 Por trabajador</button>
-              </div>
-            </div>
-          </header>
+function Badge({status}) {
+  const S = {
+    pendiente:  {bg:'#222',  color:'#aaa',    border:'1px solid #444'},
+    en_proceso: {bg:'#3a2e00',color:'#f5c518',border:'1px solid #f5c518'},
+    completada: {bg:'#0d2e0d',color:'#4ade80',border:'1px solid #4ade80'},
+  };
+  const dot = {pendiente:'#666',en_proceso:'#f5c518',completada:'#4ade80'};
+  const lbl = {pendiente:'Pendiente',en_proceso:'En proceso',completada:'Completada'};
+  return <span style={{...S[status],display:'inline-flex',alignItems:'center',gap:6,padding:'4px 12px',borderRadius:999,fontSize:14,fontWeight:600}}>
+    <span style={{width:10,height:10,borderRadius:'50%',background:dot[status],display:'inline-block'}}/>
+    {lbl[status]}
+  </span>;
+}
+function PagoBadge({pago}) {
+  if (pago !== 'PENDING') return null;
+  return <span style={{background:'#2e1a00',color:'#fb923c',border:'1px solid #fb923c',padding:'3px 10px',borderRadius:999,fontSize:12,fontWeight:600}}>💳 Pago pendiente</span>;
+}
+function Barra({pct}) {
+  return <div style={{width:'100%',background:'#222',borderRadius:999,height:12,overflow:'hidden'}}>
+    <div style={{width:`${pct}%`,height:12,background:pct===100?'#4ade80':'#f5c518',borderRadius:999,transition:'width 0.3s'}}/>
+  </div>;
+}
+function Iconos({pala}) {
+  return <span style={{display:'inline-flex',gap:4}}>
+    {tieneAnomalia(pala) && <span title="Anomalía">⚠️</span>}
+    {pala.shopifyNote    && <span title={pala.shopifyNote}>💬</span>}
+    {tieneInfo(pala)     && <span title="Nota interna">📝</span>}
+  </span>;
+}
 
-          <main style={{ maxWidth:900, margin:'0 auto', padding:'16px' }}>
-            {vista === 'dashboard'
-              ? <Dashboard palas={listaPalas} orders={orders} onSelect={setPalaSel} />
-              : <VistaTrabajador palas={listaPalas} trabajadorSel={trabajadorSel} setTrabajadorSel={setTrabajadorSel} onSelect={setPalaSel} iniciarFase={iniciarFase} completarFase={completarFase} />
+function App() {
+  const [palas, setPalas]       = useState({});
+  const [vista, setVista]       = useState('dashboard');
+  const [palaSel, setPalaSel]   = useState(null);
+  const [trab, setTrab]         = useState(TRABAJADORES[0].nombre);
+  const [saveStatus, setSave]   = useState('idle');
+  const [saveTime, setSaveTime] = useState(null);
+  const justLoaded = useRef(true);
+
+  useEffect(() => {
+    setPalas(buildPalas(ORDERS, {}));
+    justLoaded.current = true;
+    (async () => {
+      const st = await dbGet(KEY_STATE);
+      justLoaded.current = true;
+      setPalas(buildPalas(ORDERS, st?.palas || {}));
+      justLoaded.current = true;
+    })();
+  }, []);
+
+  useEffect(() => {
+    if (!Object.keys(palas).length) return;
+    if (justLoaded.current) { justLoaded.current = false; return; }
+    setSave('saving');
+    dbSet(KEY_STATE, { palas, modified: Date.now() }).then(() => {
+      setSave('saved'); setSaveTime(Date.now());
+    });
+  }, [palas]);
+
+  useEffect(() => {
+    const iv = setInterval(async () => {
+      try {
+        const st = await dbGet(KEY_STATE);
+        if (!st?.palas) return;
+        setPalas(local => {
+          let changed = false;
+          const merged = { ...local };
+          for (const [id, remote] of Object.entries(st.palas)) {
+            if (!local[id] || (remote.lastModified||0) > (local[id]?.lastModified||0)) {
+              merged[id] = remote; changed = true;
             }
-          </main>
+          }
+          return changed ? merged : local;
+        });
+      } catch(_) {}
+    }, POLL_MS);
+    return () => clearInterval(iv);
+  }, []);
 
-          {palaSel && palas[palaSel] && (
-            <DetallePala pala={palas[palaSel]} onClose={() => setPalaSel(null)} iniciarFase={iniciarFase} completarFase={completarFase} añadirNota={añadirNota} />
-          )}
-        </div>
-      );
-    }
+  function iniciar(palaId, fId) {
+    setPalas(p => { const x=p[palaId]; return {...p,[palaId]:{...x,lastModified:Date.now(),phases:x.phases.map(f=>f.id===fId?{...f,status:'en_proceso',startedAt:new Date().toISOString()}:f)}}; });
+  }
+  function completar(palaId, fId) {
+    setPalas(p => { const x=p[palaId]; return {...p,[palaId]:{...x,lastModified:Date.now(),phases:x.phases.map(f=>f.id===fId?{...f,status:'completada',finishedAt:new Date().toISOString()}:f)}}; });
+  }
+  function addNota(palaId, {texto,tipo,autor}) {
+    setPalas(p => {
+      const x=p[palaId]; const fId=faseActualId(x); const fase=FASES.find(f=>f.id===fId);
+      const nota={id:`${palaId}-${Date.now()}`,text:texto,type:tipo,author:autor,phaseId:fId,phaseName:fase?.nombre||'—',timestamp:new Date().toISOString()};
+      return {...p,[palaId]:{...x,lastModified:Date.now(),notes:[...x.notes,nota]}};
+    });
+  }
 
-    // ── DASHBOARD ──
-    function Dashboard({ palas, orders, onSelect }) {
-      const pedidos = {};
-      palas.forEach(p => {
-        if (!pedidos[p.orderName]) pedidos[p.orderName] = { name: p.orderName, customer: p.customer, createdAt: p.orderCreatedAt, pago: p.pago, shopifyNote: p.shopifyNote, palas: [] };
-        pedidos[p.orderName].palas.push(p);
-      });
-      const lista = Object.values(pedidos).sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
-      const completadas = palas.filter(p => estaCompletada(p)).length;
-      const conAnomalia = palas.filter(p => tieneAnomalia(p)).length;
+  const lista = Object.values(palas);
+  const saveDot = saveStatus==='saved'?'#4ade80':saveStatus==='saving'?'#f5c518':'#555';
+  const saveLbl = saveStatus==='saving'?'Guardando…':saveStatus==='saved'?`Guardado ${fmtH(saveTime)}`:'Sin cambios';
 
-      return <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
-        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(140px, 1fr))', gap:12 }}>
-          {[['Palas totales', palas.length, '#fff'], ['En curso', palas.length - completadas, '#f5c518'], ['Completadas', completadas, '#4ade80'], ['Anomalías', conAnomalia, '#f87171']].map(([label, val, color]) => (
-            <div key={label} style={{ background:'#111', border:'1px solid #333', borderRadius:16, padding:16 }}>
-              <div style={{ fontSize:32, fontWeight:900, color }}>{val}</div>
-              <div style={{ fontSize:13, color:'#888', marginTop:2 }}>{label}</div>
+  return (
+    <div style={{minHeight:'100vh',background:'#0a0a0a',color:'white'}}>
+      <header style={{background:'#111',borderBottom:'1px solid #333',position:'sticky',top:0,zIndex:20}}>
+        <div style={{maxWidth:900,margin:'0 auto',padding:'12px 16px',display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:12}}>
+          <div>
+            <div style={{fontSize:22,fontWeight:900,letterSpacing:2}}>SPACEPADEL</div>
+            <div style={{fontSize:12,color:'#888'}}>🛒 {ORDERS.length} pedidos · {lista.length} palas</div>
+          </div>
+          <div style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}>
+            <div style={{display:'flex',alignItems:'center',gap:6,fontSize:12,color:'#888',background:'#1a1a1a',border:'1px solid #333',borderRadius:8,padding:'6px 10px'}}>
+              <span style={{width:8,height:8,borderRadius:'50%',background:saveDot,display:'inline-block'}}/>
+              {saveLbl}
             </div>
-          ))}
+            <button onClick={()=>{setVista('dashboard');setPalaSel(null);}} style={{padding:'10px 18px',borderRadius:10,fontWeight:700,fontSize:15,border:'none',background:vista==='dashboard'?'#f5c518':'#222',color:vista==='dashboard'?'#000':'#fff'}}>📋 Dashboard</button>
+            <button onClick={()=>{setVista('trabajador');setPalaSel(null);}} style={{padding:'10px 18px',borderRadius:10,fontWeight:700,fontSize:15,border:'none',background:vista==='trabajador'?'#f5c518':'#222',color:vista==='trabajador'?'#000':'#fff'}}>👷 Por trabajador</button>
+          </div>
         </div>
-        {lista.map(pedido => {
-          const totalFases = pedido.palas.length * FASES.length;
-          const hechas = pedido.palas.reduce((a, p) => a + p.phases.filter(f => f.status === 'completada').length, 0);
-          const pct = Math.round(hechas / totalFases * 100);
-          return (
-            <div key={pedido.name} style={{ background:'#111', border: pedido.shopifyNote ? '1px solid #9333ea' : '1px solid #333', borderRadius:16, padding:20 }}>
-              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', flexWrap:'wrap', gap:8, marginBottom:12 }}>
-                <div>
-                  <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
-                    <span style={{ fontSize:20, fontWeight:900 }}>{pedido.name}</span>
-                    <span style={{ color:'#888' }}>{pedido.customer}</span>
-                    <PagoBadge pago={pedido.pago} />
-                  </div>
-                  <div style={{ fontSize:13, color:'#666', marginTop:2 }}>Entrada: {fmtFecha(pedido.createdAt)} · {pedido.palas.length} pala{pedido.palas.length > 1 ? 's' : ''}</div>
-                  {pedido.shopifyNote && <div style={{ marginTop:8, background:'#1e1030', borderLeft:'4px solid #9333ea', padding:'8px 12px', borderRadius:'0 8px 8px 0', fontSize:13, color:'#c084fc' }}>💬 {pedido.shopifyNote}</div>}
+      </header>
+      <main style={{maxWidth:900,margin:'0 auto',padding:16}}>
+        {vista==='dashboard'
+          ? <Dashboard palas={lista} onSelect={setPalaSel}/>
+          : <Trabajador palas={lista} trab={trab} setTrab={setTrab} onSelect={setPalaSel} iniciar={iniciar} completar={completar}/>
+        }
+      </main>
+      {palaSel && palas[palaSel] && (
+        <Detalle pala={palas[palaSel]} onClose={()=>setPalaSel(null)} iniciar={iniciar} completar={completar} addNota={addNota}/>
+      )}
+    </div>
+  );
+}
+
+function Dashboard({palas, onSelect}) {
+  const pedidos = {};
+  palas.forEach(p => {
+    if (!pedidos[p.orderName]) pedidos[p.orderName]={name:p.orderName,customer:p.customer,createdAt:p.orderCreatedAt,pago:p.pago,shopifyNote:p.shopifyNote,palas:[]};
+    pedidos[p.orderName].palas.push(p);
+  });
+  const lista = Object.values(pedidos).sort((a,b)=>new Date(a.createdAt)-new Date(b.createdAt));
+  const completadas = palas.filter(p=>estaCompletada(p)).length;
+  const anomalias   = palas.filter(p=>tieneAnomalia(p)).length;
+  return (
+    <div style={{display:'flex',flexDirection:'column',gap:16}}>
+      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(130px,1fr))',gap:12}}>
+        {[['Palas totales',palas.length,'#fff'],['En curso',palas.length-completadas,'#f5c518'],['Completadas',completadas,'#4ade80'],['Anomalías',anomalias,'#f87171']].map(([l,v,c])=>(
+          <div key={l} style={{background:'#111',border:'1px solid #333',borderRadius:16,padding:16}}>
+            <div style={{fontSize:32,fontWeight:900,color:c}}>{v}</div>
+            <div style={{fontSize:13,color:'#888',marginTop:2}}>{l}</div>
+          </div>
+        ))}
+      </div>
+      {lista.map(ped => {
+        const tot=ped.palas.length*FASES.length;
+        const hec=ped.palas.reduce((a,p)=>a+p.phases.filter(f=>f.status==='completada').length,0);
+        const pct=Math.round(hec/tot*100);
+        return (
+          <div key={ped.name} style={{background:'#111',border:ped.shopifyNote?'1px solid #9333ea':'1px solid #333',borderRadius:16,padding:20}}>
+            <div style={{display:'flex',justifyContent:'space-between',flexWrap:'wrap',gap:8,marginBottom:12}}>
+              <div>
+                <div style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}>
+                  <span style={{fontSize:20,fontWeight:900}}>{ped.name}</span>
+                  <span style={{color:'#888'}}>{ped.customer}</span>
+                  <PagoBadge pago={ped.pago}/>
                 </div>
-                <div style={{ textAlign:'right' }}>
-                  <div style={{ fontSize:28, fontWeight:900, color:'#f5c518' }}>{pct}%</div>
-                  <div style={{ fontSize:12, color:'#666' }}>avance</div>
-                </div>
+                <div style={{fontSize:13,color:'#666',marginTop:2}}>Entrada: {fmtF(ped.createdAt)} · {ped.palas.length} pala{ped.palas.length>1?'s':''}</div>
+                {ped.shopifyNote && <div style={{marginTop:8,background:'#1e1030',borderLeft:'4px solid #9333ea',padding:'8px 12px',borderRadius:'0 8px 8px 0',fontSize:13,color:'#c084fc'}}>💬 {ped.shopifyNote}</div>}
               </div>
-              <BarraProgreso pct={pct} />
-              <div style={{ marginTop:12, display:'flex', flexDirection:'column', gap:6 }}>
-                {pedido.palas.map(pala => {
-                  const fId = faseActualId(pala);
-                  const fase = FASES.find(f => f.id === fId);
-                  const completa = estaCompletada(pala);
-                  return (
-                    <button key={pala.id} onClick={() => onSelect(pala.id)} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', background:'#1a1a1a', border:'1px solid #2a2a2a', borderRadius:10, padding:'10px 14px', cursor:'pointer', color:'white', textAlign:'left', gap:8 }}>
-                      <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                        <span style={{ fontWeight:700 }}>{pala.id}</span>
-                        <IndicadoresIconos pala={pala} />
-                        <span style={{ color:'#888', fontSize:13 }}>{pala.product}</span>
-                      </div>
-                      <div style={{ display:'flex', alignItems:'center', gap:8, fontSize:13 }}>
-                        <span style={{ color:'#aaa' }}>{completa ? '✅ Enviado' : `Fase ${fId}: ${fase?.nombre || '—'}`}</span>
-                        <span style={{ color:'#f5c518', fontWeight:600 }}>Ver →</span>
-                      </div>
-                    </button>
-                  );
-                })}
+              <div style={{textAlign:'right'}}>
+                <div style={{fontSize:28,fontWeight:900,color:'#f5c518'}}>{pct}%</div>
+                <div style={{fontSize:12,color:'#666'}}>avance</div>
+              </div>
+            </div>
+            <Barra pct={pct}/>
+            <div style={{marginTop:12,display:'flex',flexDirection:'column',gap:6}}>
+              {ped.palas.map(pala => {
+                const fId=faseActualId(pala); const fase=FASES.find(f=>f.id===fId); const comp=estaCompletada(pala);
+                return (
+                  <button key={pala.id} onClick={()=>onSelect(pala.id)} style={{display:'flex',alignItems:'center',justifyContent:'space-between',background:'#1a1a1a',border:'1px solid #2a2a2a',borderRadius:10,padding:'10px 14px',color:'white',textAlign:'left',gap:8}}>
+                    <div style={{display:'flex',alignItems:'center',gap:8}}>
+                      <span style={{fontWeight:700}}>{pala.id}</span>
+                      <Iconos pala={pala}/>
+                      <span style={{color:'#888',fontSize:13}}>{pala.product}</span>
+                    </div>
+                    <div style={{display:'flex',alignItems:'center',gap:8,fontSize:13}}>
+                      <span style={{color:'#aaa'}}>{comp?'✅ Enviado':`Fase ${fId}: ${fase?.nombre||'—'}`}</span>
+                      <span style={{color:'#f5c518',fontWeight:600}}>Ver →</span>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function Trabajador({palas, trab, setTrab, onSelect, iniciar, completar}) {
+  function palasDe(n) {
+    return palas.filter(p=>{ const fId=faseActualId(p); if(!fId) return false; return FASES.find(f=>f.id===fId)?.responsable===n; }).sort((a,b)=>new Date(a.orderCreatedAt)-new Date(b.orderCreatedAt));
+  }
+  const cola = palasDe(trab);
+  return (
+    <div style={{display:'flex',flexDirection:'column',gap:16}}>
+      <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:10}}>
+        {TRABAJADORES.map(t => {
+          const n=palasDe(t.nombre).length; const activo=t.nombre===trab;
+          return (
+            <button key={t.nombre} onClick={()=>setTrab(t.nombre)} style={{borderRadius:14,padding:'14px 10px',textAlign:'center',border:activo?'2px solid #f5c518':'2px solid #333',background:activo?'#3a2e00':'#111',color:activo?'#f5c518':'#fff'}}>
+              <div style={{fontSize:17,fontWeight:700}}>{t.nombre}</div>
+              <div style={{fontSize:13,marginTop:2,color:activo?'#f5c518aa':'#888'}}>{n} pala{n!==1?'s':''}</div>
+            </button>
+          );
+        })}
+      </div>
+      {cola.length===0
+        ? <div style={{background:'#111',border:'1px solid #333',borderRadius:16,padding:40,textAlign:'center',color:'#666',fontSize:17}}>No hay palas para {trab} ahora mismo ✅</div>
+        : cola.map((pala,idx)=>{
+          const fId=faseActualId(pala); const faseObj=pala.phases.find(p=>p.id===fId); const fase=FASES.find(f=>f.id===fId);
+          return (
+            <div key={pala.id} style={{background:'#111',border:pala.shopifyNote?'1px solid #9333ea':'1px solid #333',borderRadius:16,padding:16}}>
+              <div style={{display:'flex',justifyContent:'space-between',flexWrap:'wrap',gap:8}}>
+                <div style={{display:'flex',alignItems:'center',gap:10}}>
+                  <span style={{background:'#f5c518',color:'#000',fontWeight:900,borderRadius:8,padding:'4px 10px',fontSize:14}}>#{idx+1}</span>
+                  <div>
+                    <div style={{display:'flex',alignItems:'center',gap:6}}><span style={{fontWeight:700,fontSize:17}}>{pala.id}</span><Iconos pala={pala}/></div>
+                    <div style={{fontSize:13,color:'#888'}}>{pala.product}</div>
+                    <div style={{fontSize:12,color:'#555'}}>entrada {fmtF(pala.orderCreatedAt)}</div>
+                  </div>
+                </div>
+                <div style={{textAlign:'right'}}><div style={{fontSize:12,color:'#888'}}>Fase {fId}</div><div style={{fontWeight:600}}>{fase.nombre}</div></div>
+              </div>
+              {pala.shopifyNote && <div style={{marginTop:10,background:'#1e1030',borderLeft:'4px solid #9333ea',padding:'8px 12px',borderRadius:'0 8px 8px 0',fontSize:13,color:'#c084fc'}}>💬 {pala.shopifyNote}</div>}
+              <div style={{marginTop:12,display:'flex',gap:8,flexWrap:'wrap',alignItems:'center'}}>
+                <Badge status={faseObj.status}/>
+                {faseObj.status!=='en_proceso'
+                  ? <button onClick={()=>iniciar(pala.id,fId)} style={{padding:'10px 18px',borderRadius:10,background:'#f5c518',color:'#000',fontWeight:700,border:'none',fontSize:15}}>▶ Iniciar</button>
+                  : <button onClick={()=>completar(pala.id,fId)} style={{padding:'10px 18px',borderRadius:10,background:'#4ade80',color:'#000',fontWeight:700,border:'none',fontSize:15}}>✓ Completar</button>
+                }
+                <button onClick={()=>onSelect(pala.id)} style={{padding:'10px 18px',borderRadius:10,background:'#222',color:'#fff',fontWeight:600,border:'1px solid #444',fontSize:15}}>Ver ficha</button>
               </div>
             </div>
           );
-        })}
-      </div>;
-    }
-
-    // ── VISTA TRABAJADOR ──
-    function VistaTrabajador({ palas, trabajadorSel, setTrabajadorSel, onSelect, iniciarFase, completarFase }) {
-      function palasDe(nombre) {
-        return palas.filter(p => { const fId = faseActualId(p); if (!fId) return false; return FASES.find(f => f.id === fId)?.responsable === nombre; }).sort((a, b) => new Date(a.orderCreatedAt) - new Date(b.orderCreatedAt));
+        })
       }
-      const trab = TRABAJADORES.find(t => t.nombre === trabajadorSel);
-      const cola = palasDe(trabajadorSel);
-      return (
-        <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
-          <div style={{ display:'grid', gridTemplateColumns:'repeat(3, 1fr)', gap:10 }}>
-            {TRABAJADORES.map(t => {
-              const n = palasDe(t.nombre).length;
-              const activo = t.nombre === trabajadorSel;
-              return (
-                <button key={t.nombre} onClick={() => setTrabajadorSel(t.nombre)} style={{ borderRadius:14, padding:'14px 10px', textAlign:'center', border: activo ? '2px solid #f5c518' : '2px solid #333', background: activo ? '#3a2e00' : '#111', color: activo ? '#f5c518' : '#fff', cursor:'pointer' }}>
-                  <div style={{ fontSize:17, fontWeight:700 }}>{t.nombre}</div>
-                  <div style={{ fontSize:13, marginTop:2, color: activo ? '#f5c518aa' : '#888' }}>{n} pala{n !== 1 ? 's' : ''}</div>
-                </button>
-              );
-            })}
-          </div>
-          {cola.length === 0
-            ? <div style={{ background:'#111', border:'1px solid #333', borderRadius:16, padding:40, textAlign:'center', color:'#666', fontSize:17 }}>No hay palas para {trab.nombre} ahora mismo ✅</div>
-            : cola.map((pala, idx) => {
-              const fId = faseActualId(pala);
-              const faseObj = pala.phases.find(p => p.id === fId);
-              const fase = FASES.find(f => f.id === fId);
-              const enProceso = faseObj.status === 'en_proceso';
-              return (
-                <div key={pala.id} style={{ background:'#111', border: pala.shopifyNote ? '1px solid #9333ea' : '1px solid #333', borderRadius:16, padding:16 }}>
-                  <div style={{ display:'flex', justifyContent:'space-between', flexWrap:'wrap', gap:8 }}>
-                    <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-                      <span style={{ background:'#f5c518', color:'#000', fontWeight:900, borderRadius:8, padding:'4px 10px', fontSize:14 }}>#{idx + 1}</span>
-                      <div>
-                        <div style={{ display:'flex', alignItems:'center', gap:6 }}>
-                          <span style={{ fontWeight:700, fontSize:17 }}>{pala.id}</span>
-                          <IndicadoresIconos pala={pala} />
-                        </div>
-                        <div style={{ fontSize:13, color:'#888' }}>{pala.product}</div>
-                        <div style={{ fontSize:12, color:'#555' }}>entrada {fmtFecha(pala.orderCreatedAt)}</div>
-                      </div>
-                    </div>
-                    <div style={{ textAlign:'right' }}>
-                      <div style={{ fontSize:12, color:'#888' }}>Fase {fId}</div>
-                      <div style={{ fontWeight:600 }}>{fase.nombre}</div>
-                    </div>
-                  </div>
-                  {pala.shopifyNote && <div style={{ marginTop:10, background:'#1e1030', borderLeft:'4px solid #9333ea', padding:'8px 12px', borderRadius:'0 8px 8px 0', fontSize:13, color:'#c084fc' }}>💬 {pala.shopifyNote}</div>}
-                  <div style={{ marginTop:12, display:'flex', gap:8, flexWrap:'wrap', alignItems:'center' }}>
-                    <EstadoBadge status={faseObj.status} />
-                    {!enProceso
-                      ? <button onClick={() => iniciarFase(pala.id, fId)} style={{ padding:'10px 18px', borderRadius:10, background:'#f5c518', color:'#000', fontWeight:700, border:'none', cursor:'pointer', fontSize:15 }}>▶ Iniciar</button>
-                      : <button onClick={() => completarFase(pala.id, fId)} style={{ padding:'10px 18px', borderRadius:10, background:'#4ade80', color:'#000', fontWeight:700, border:'none', cursor:'pointer', fontSize:15 }}>✓ Completar</button>
-                    }
-                    <button onClick={() => onSelect(pala.id)} style={{ padding:'10px 18px', borderRadius:10, background:'#222', color:'#fff', fontWeight:600, border:'1px solid #444', cursor:'pointer', fontSize:15 }}>Ver ficha</button>
-                  </div>
-                </div>
-              );
-            })
-          }
-        </div>
-      );
-    }
+    </div>
+  );
+}
 
-    // ── DETALLE PALA ──
-    function DetallePala({ pala, onClose, iniciarFase, completarFase, añadirNota }) {
-      const [texto, setTexto] = useState('');
-      const [tipo, setTipo] = useState('info');
-      const [autor, setAutor] = useState(AUTORES[0]);
-      const fActualId = faseActualId(pala);
-      const completa = estaCompletada(pala);
-      const notasOrdenadas = [...pala.notes].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
-      return (
-        <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.7)', zIndex:30, display:'flex', justifyContent:'flex-end' }}>
-          <div style={{ background:'#0f0f0f', width:'100%', maxWidth:600, height:'100%', overflowY:'auto', borderLeft:'1px solid #333' }}>
-            <div style={{ background:'#111', borderBottom:'1px solid #333', padding:'16px 20px', position:'sticky', top:0, zIndex:10, display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
-              <div>
-                <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
-                  <span style={{ fontSize:22, fontWeight:900 }}>{pala.id}</span>
-                  <IndicadoresIconos pala={pala} />
-                  <PagoBadge pago={pala.pago} />
-                </div>
-                <div style={{ fontSize:13, color:'#888', marginTop:2 }}>{pala.orderName} · {pala.customer}</div>
-                <div style={{ fontSize:13, color:'#666' }}>{pala.product} · {progresoPala(pala)}% completado</div>
-              </div>
-              <button onClick={onClose} style={{ padding:'8px 14px', borderRadius:10, background:'#222', color:'#fff', border:'1px solid #444', cursor:'pointer', fontWeight:700, fontSize:16 }}>✕</button>
+function Detalle({pala, onClose, iniciar, completar, addNota}) {
+  const [texto,setTexto]=useState('');
+  const [tipo,setTipo]=useState('info');
+  const [autor,setAutor]=useState(AUTORES[0]);
+  const fId=faseActualId(pala); const comp=estaCompletada(pala);
+  const notas=[...pala.notes].sort((a,b)=>new Date(a.timestamp)-new Date(b.timestamp));
+  return (
+    <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.7)',zIndex:30,display:'flex',justifyContent:'flex-end'}}>
+      <div style={{background:'#0f0f0f',width:'100%',maxWidth:600,height:'100%',overflowY:'auto',borderLeft:'1px solid #333'}}>
+        <div style={{background:'#111',borderBottom:'1px solid #333',padding:'16px 20px',position:'sticky',top:0,zIndex:10,display:'flex',justifyContent:'space-between',alignItems:'flex-start'}}>
+          <div>
+            <div style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}>
+              <span style={{fontSize:22,fontWeight:900}}>{pala.id}</span>
+              <Iconos pala={pala}/>
+              <PagoBadge pago={pala.pago}/>
             </div>
-            <div style={{ padding:20, display:'flex', flexDirection:'column', gap:24 }}>
-              {pala.shopifyNote && (
-                <div style={{ background:'#1e1030', border:'2px solid #9333ea', borderRadius:16, padding:16 }}>
-                  <div style={{ fontWeight:700, color:'#c084fc', marginBottom:6 }}>💬 Nota del cliente</div>
-                  <div style={{ color:'#e9d5ff', whiteSpace:'pre-wrap' }}>{pala.shopifyNote}</div>
-                </div>
-              )}
-              <div>
-                <div style={{ fontWeight:700, fontSize:17, marginBottom:12 }}>Pipeline de producción</div>
-                <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
-                  {FASES.map(fase => {
-                    const f = pala.phases.find(p => p.id === fase.id);
-                    const esActual = fase.id === fActualId;
-                    const bg = f.status === 'completada' ? '#0d2e0d' : f.status === 'en_proceso' ? '#3a2e00' : esActual ? '#1a1a2e' : '#1a1a1a';
-                    const border = f.status === 'completada' ? '1px solid #4ade80' : f.status === 'en_proceso' ? '1px solid #f5c518' : esActual ? '1px solid #6366f1' : '1px solid #2a2a2a';
-                    return (
-                      <div key={fase.id} style={{ background:bg, border, borderRadius:12, padding:12 }}>
-                        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', flexWrap:'wrap', gap:8 }}>
-                          <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-                            <span style={{ width:36, height:36, borderRadius:'50%', background: f.status==='completada'?'#4ade80':f.status==='en_proceso'?'#f5c518':'#333', color: f.status==='completada'||f.status==='en_proceso'?'#000':'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontWeight:700, fontSize:14 }}>{f.status==='completada'?'✓':fase.id}</span>
-                            <div>
-                              <div style={{ fontWeight:600 }}>{fase.nombre}</div>
-                              <div style={{ fontSize:12, color:'#888' }}>{fase.responsable}</div>
-                            </div>
-                          </div>
-                          <EstadoBadge status={f.status} />
-                        </div>
-                        {(f.startedAt || f.finishedAt) && (
-                          <div style={{ marginTop:6, fontSize:12, color:'#888', display:'flex', gap:16, paddingLeft:46 }}>
-                            {f.startedAt && <span>Inicio: {fmt(f.startedAt)}</span>}
-                            {f.finishedAt && <span>Fin: {fmt(f.finishedAt)}</span>}
-                          </div>
-                        )}
-                        {esActual && f.status === 'pendiente' && <div style={{ marginTop:8, paddingLeft:46 }}><button onClick={() => iniciarFase(pala.id, fase.id)} style={{ padding:'8px 16px', borderRadius:10, background:'#f5c518', color:'#000', fontWeight:700, border:'none', cursor:'pointer' }}>▶ Iniciar fase</button></div>}
-                        {esActual && f.status === 'en_proceso' && <div style={{ marginTop:8, paddingLeft:46 }}><button onClick={() => completarFase(pala.id, fase.id)} style={{ padding:'8px 16px', borderRadius:10, background:'#4ade80', color:'#000', fontWeight:700, border:'none', cursor:'pointer' }}>✓ Completar fase</button></div>}
+            <div style={{fontSize:13,color:'#888',marginTop:2}}>{pala.orderName} · {pala.customer}</div>
+            <div style={{fontSize:13,color:'#666'}}>{pala.product} · {progreso(pala)}% completado</div>
+          </div>
+          <button onClick={onClose} style={{padding:'8px 14px',borderRadius:10,background:'#222',color:'#fff',border:'1px solid #444',fontWeight:700,fontSize:16}}>✕</button>
+        </div>
+        <div style={{padding:20,display:'flex',flexDirection:'column',gap:24}}>
+          {pala.shopifyNote && (
+            <div style={{background:'#1e1030',border:'2px solid #9333ea',borderRadius:16,padding:16}}>
+              <div style={{fontWeight:700,color:'#c084fc',marginBottom:6}}>💬 Nota del cliente</div>
+              <div style={{color:'#e9d5ff',whiteSpace:'pre-wrap'}}>{pala.shopifyNote}</div>
+            </div>
+          )}
+          <div>
+            <div style={{fontWeight:700,fontSize:17,marginBottom:12}}>Pipeline de producción</div>
+            <div style={{display:'flex',flexDirection:'column',gap:8}}>
+              {FASES.map(fase => {
+                const f=pala.phases.find(p=>p.id===fase.id); const esAct=fase.id===fId;
+                const bg=f.status==='completada'?'#0d2e0d':f.status==='en_proceso'?'#3a2e00':esAct?'#1a1a2e':'#1a1a1a';
+                const border=f.status==='completada'?'1px solid #4ade80':f.status==='en_proceso'?'1px solid #f5c518':esAct?'1px solid #6366f1':'1px solid #2a2a2a';
+                return (
+                  <div key={fase.id} style={{background:bg,border,borderRadius:12,padding:12}}>
+                    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:8}}>
+                      <div style={{display:'flex',alignItems:'center',gap:10}}>
+                        <span style={{width:36,height:36,borderRadius:'50%',background:f.status==='completada'?'#4ade80':f.status==='en_proceso'?'#f5c518':'#333',color:f.status==='completada'||f.status==='en_proceso'?'#000':'#fff',display:'flex',alignItems:'center',justifyContent:'center',fontWeight:700,fontSize:14}}>{f.status==='completada'?'✓':fase.id}</span>
+                        <div><div style={{fontWeight:600}}>{fase.nombre}</div><div style={{fontSize:12,color:'#888'}}>{fase.responsable}</div></div>
                       </div>
-                    );
-                  })}
-                </div>
-                {completa && <div style={{ marginTop:12, background:'#0d2e0d', border:'1px solid #4ade80', borderRadius:12, padding:12, textAlign:'center', color:'#4ade80', fontWeight:600 }}>✅ Pala completada y enviada</div>}
-              </div>
-              <div>
-                <div style={{ fontWeight:700, fontSize:17, marginBottom:12 }}>Notas e incidencias</div>
-                <div style={{ background:'#111', border:'1px solid #333', borderRadius:16, padding:16, display:'flex', flexDirection:'column', gap:12 }}>
-                  <textarea value={texto} onChange={e => setTexto(e.target.value)} placeholder="Observación, anomalía o instrucción especial…" rows={3} style={{ width:'100%', background:'#1a1a1a', border:'1px solid #444', borderRadius:10, padding:12, color:'white', fontSize:15, resize:'none', boxSizing:'border-box' }} />
-                  <div style={{ display:'flex', flexWrap:'wrap', gap:8, alignItems:'center' }}>
-                    <button onClick={() => setTipo('info')} style={{ padding:'8px 14px', borderRadius:10, border: tipo==='info'?'2px solid #6366f1':'2px solid #333', background: tipo==='info'?'#1e1b4b':'#1a1a1a', color: tipo==='info'?'#818cf8':'#fff', fontWeight:600, cursor:'pointer' }}>📝 Informativa</button>
-                    <button onClick={() => setTipo('anomalia')} style={{ padding:'8px 14px', borderRadius:10, border: tipo==='anomalia'?'2px solid #f87171':'2px solid #333', background: tipo==='anomalia'?'#2e0d0d':'#1a1a1a', color: tipo==='anomalia'?'#f87171':'#fff', fontWeight:600, cursor:'pointer' }}>⚠️ Anomalía</button>
-                    <select value={autor} onChange={e => setAutor(e.target.value)} style={{ padding:'8px 12px', borderRadius:10, border:'2px solid #333', background:'#1a1a1a', color:'white', fontWeight:600 }}>
-                      {AUTORES.map(a => <option key={a} value={a}>{a}</option>)}
-                    </select>
-                    <button onClick={() => { if (!texto.trim()) return; añadirNota(pala.id, { texto: texto.trim(), tipo, autor }); setTexto(''); setTipo('info'); }} disabled={!texto.trim()} style={{ padding:'8px 18px', borderRadius:10, background: texto.trim()?'#f5c518':'#333', color: texto.trim()?'#000':'#888', fontWeight:700, border:'none', cursor: texto.trim()?'pointer':'not-allowed', marginLeft:'auto' }}>Guardar</button>
+                      <Badge status={f.status}/>
+                    </div>
+                    {(f.startedAt||f.finishedAt) && (
+                      <div style={{marginTop:6,fontSize:12,color:'#888',display:'flex',gap:16,paddingLeft:46}}>
+                        {f.startedAt && <span>Inicio: {fmt(f.startedAt)}</span>}
+                        {f.finishedAt && <span>Fin: {fmt(f.finishedAt)}</span>}
+                      </div>
+                    )}
+                    {esAct && f.status==='pendiente'   && <div style={{marginTop:8,paddingLeft:46}}><button onClick={()=>iniciar(pala.id,fase.id)}   style={{padding:'8px 16px',borderRadius:10,background:'#f5c518',color:'#000',fontWeight:700,border:'none'}}>▶ Iniciar fase</button></div>}
+                    {esAct && f.status==='en_proceso'  && <div style={{marginTop:8,paddingLeft:46}}><button onClick={()=>completar(pala.id,fase.id)} style={{padding:'8px 16px',borderRadius:10,background:'#4ade80',color:'#000',fontWeight:700,border:'none'}}>✓ Completar fase</button></div>}
                   </div>
-                </div>
-                <div style={{ marginTop:12, display:'flex', flexDirection:'column', gap:8 }}>
-                  {notasOrdenadas.length === 0
-                    ? <div style={{ textAlign:'center', color:'#666', padding:20 }}>Sin notas todavía.</div>
-                    : notasOrdenadas.map(n => (
-                      <div key={n.id} style={{ background: n.type==='anomalia'?'#2e0d0d':'#111', border: n.type==='anomalia'?'1px solid #f87171':'1px solid #333', borderRadius:12, padding:12 }}>
-                        <div style={{ display:'flex', justifyContent:'space-between', flexWrap:'wrap', gap:4, marginBottom:4 }}>
-                          <div style={{ display:'flex', alignItems:'center', gap:6 }}>
-                            <span style={{ fontWeight:700, fontSize:13 }}>{n.author}</span>
-                            <span style={{ fontSize:12, padding:'2px 8px', borderRadius:999, background: n.type==='anomalia'?'#3d1515':'#1e1b4b', color: n.type==='anomalia'?'#f87171':'#818cf8' }}>{n.type==='anomalia'?'⚠️ Anomalía':'📝 Info'}</span>
-                          </div>
-                          <span style={{ fontSize:12, color:'#666' }}>{fmt(n.timestamp)}</span>
-                        </div>
-                        <div style={{ color:'#ddd', whiteSpace:'pre-wrap' }}>{n.text}</div>
-                        <div style={{ fontSize:12, color:'#555', marginTop:4 }}>Fase: {n.phaseName}</div>
-                      </div>
-                    ))
-                  }
-                </div>
+                );
+              })}
+            </div>
+            {comp && <div style={{marginTop:12,background:'#0d2e0d',border:'1px solid #4ade80',borderRadius:12,padding:12,textAlign:'center',color:'#4ade80',fontWeight:600}}>✅ Pala completada y enviada</div>}
+          </div>
+          <div>
+            <div style={{fontWeight:700,fontSize:17,marginBottom:12}}>Notas e incidencias</div>
+            <div style={{background:'#111',border:'1px solid #333',borderRadius:16,padding:16,display:'flex',flexDirection:'column',gap:12}}>
+              <textarea value={texto} onChange={e=>setTexto(e.target.value)} placeholder="Observación, anomalía o instrucción especial…" rows={3} style={{width:'100%',background:'#1a1a1a',border:'1px solid #444',borderRadius:10,padding:12,color:'white',fontSize:15,resize:'none'}}/>
+              <div style={{display:'flex',flexWrap:'wrap',gap:8,alignItems:'center'}}>
+                <button onClick={()=>setTipo('info')}     style={{padding:'8px 14px',borderRadius:10,border:tipo==='info'?'2px solid #6366f1':'2px solid #333',background:tipo==='info'?'#1e1b4b':'#1a1a1a',color:tipo==='info'?'#818cf8':'#fff',fontWeight:600}}>📝 Informativa</button>
+                <button onClick={()=>setTipo('anomalia')} style={{padding:'8px 14px',borderRadius:10,border:tipo==='anomalia'?'2px solid #f87171':'2px solid #333',background:tipo==='anomalia'?'#2e0d0d':'#1a1a1a',color:tipo==='anomalia'?'#f87171':'#fff',fontWeight:600}}>⚠️ Anomalía</button>
+                <select value={autor} onChange={e=>setAutor(e.target.value)} style={{padding:'8px 12px',borderRadius:10,border:'2px solid #333',background:'#1a1a1a',color:'white',fontWeight:600}}>
+                  {AUTORES.map(a=><option key={a} value={a}>{a}</option>)}
+                </select>
+                <button onClick={()=>{ if(!texto.trim()) return; addNota(pala.id,{texto:texto.trim(),tipo,autor}); setTexto(''); setTipo('info'); }} disabled={!texto.trim()} style={{padding:'8px 18px',borderRadius:10,background:texto.trim()?'#f5c518':'#333',color:texto.trim()?'#000':'#888',fontWeight:700,border:'none',marginLeft:'auto'}}>Guardar</button>
               </div>
+            </div>
+            <div style={{marginTop:12,display:'flex',flexDirection:'column',gap:8}}>
+              {notas.length===0
+                ? <div style={{textAlign:'center',color:'#666',padding:20}}>Sin notas todavía.</div>
+                : notas.map(n=>(
+                  <div key={n.id} style={{background:n.type==='anomalia'?'#2e0d0d':'#111',border:n.type==='anomalia'?'1px solid #f87171':'1px solid #333',borderRadius:12,padding:12}}>
+                    <div style={{display:'flex',justifyContent:'space-between',flexWrap:'wrap',gap:4,marginBottom:4}}>
+                      <div style={{display:'flex',alignItems:'center',gap:6}}>
+                        <span style={{fontWeight:700,fontSize:13}}>{n.author}</span>
+                        <span style={{fontSize:12,padding:'2px 8px',borderRadius:999,background:n.type==='anomalia'?'#3d1515':'#1e1b4b',color:n.type==='anomalia'?'#f87171':'#818cf8'}}>{n.type==='anomalia'?'⚠️ Anomalía':'📝 Info'}</span>
+                      </div>
+                      <span style={{fontSize:12,color:'#666'}}>{fmt(n.timestamp)}</span>
+                    </div>
+                    <div style={{color:'#ddd',whiteSpace:'pre-wrap'}}>{n.text}</div>
+                    <div style={{fontSize:12,color:'#555',marginTop:4}}>Fase: {n.phaseName}</div>
+                  </div>
+                ))
+              }
             </div>
           </div>
         </div>
-      );
-    }
+      </div>
+    </div>
+  );
+}
 
-    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
-  </script>
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
 </body>
 </html>
