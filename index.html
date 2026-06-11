@@ -271,6 +271,7 @@ function App() {
   }
 
   const lista = Object.values(palas).filter(p => !debeOcultarse(p));
+  const [vistaSuper, setVistaSuper] = useState(false);
   const saveDot = saveStatus==='saved'?'#4ade80':saveStatus==='saving'?'#f5c518':'#555';
   const saveLbl = saveStatus==='saving'?'Guardando…':saveStatus==='saved'?`Guardado ${fmtH(saveTime)}`:'Sin cambios';
 
@@ -292,20 +293,86 @@ function App() {
               {refreshing ? '⏳ Actualizando…' : '🔄 Actualizar pedidos'}
             </button>
             {refreshMsg && <span style={{fontSize:13,color:refreshMsg.startsWith('✅')?'#4ade80':'#f87171'}}>{refreshMsg}</span>}
-            <button onClick={()=>{setVista('dashboard');setPalaSel(null);}} style={{padding:'10px 18px',borderRadius:10,fontWeight:700,fontSize:15,border:'none',background:vista==='dashboard'?'#f5c518':'#222',color:vista==='dashboard'?'#000':'#fff'}}>📋 Dashboard</button>
-            <button onClick={()=>{setVista('trabajador');setPalaSel(null);}} style={{padding:'10px 18px',borderRadius:10,fontWeight:700,fontSize:15,border:'none',background:vista==='trabajador'?'#f5c518':'#222',color:vista==='trabajador'?'#000':'#fff'}}>👷 Por trabajador</button>
+            <button onClick={()=>{setVista('dashboard');setPalaSel(null);}} style={{padding:'10px 18px',borderRadius:10,fontWeight:700,fontSize:15,border:'none',background:vista==='dashboard'&&!vistaSuper?'#f5c518':'#222',color:vista==='dashboard'&&!vistaSuper?'#000':'#fff'}}>📋 Dashboard</button>
+            <button onClick={()=>{setVista('trabajador');setPalaSel(null);setVistaSuper(false);}} style={{padding:'10px 18px',borderRadius:10,fontWeight:700,fontSize:15,border:'none',background:vista==='trabajador'&&!vistaSuper?'#f5c518':'#222',color:vista==='trabajador'&&!vistaSuper?'#000':'#fff'}}>👷 Por trabajador</button>
+            <button onClick={()=>{setVistaSuper(v=>!v);setPalaSel(null);}} style={{padding:'10px 18px',borderRadius:10,fontWeight:700,fontSize:15,border:'none',background:vistaSuper?'#9333ea':'#222',color:'#fff'}}>🔧 Supervisor</button>
           </div>
         </div>
       </header>
       <main style={{maxWidth:900,margin:'0 auto',padding:16}}>
-        {vista==='dashboard'
-          ? <Dashboard palas={lista} onSelect={setPalaSel}/>
-          : <Trabajador palas={lista} trab={trab} setTrab={setTrab} onSelect={setPalaSel} iniciar={iniciar} completar={completar}/>
+        {vistaSuper
+          ? <Supervisor palas={lista} onSelect={setPalaSel} cambiarFase={(palaId, faseId) => {
+              setPalas(p => {
+                const x = p[palaId];
+                return {...p, [palaId]: {...x, lastModified:Date.now(), phases: x.phases.map(f =>
+                  f.id === faseId ? {...f, status:'en_proceso', startedAt:new Date().toISOString(), finishedAt:null} :
+                  f.id < faseId ? {...f, status:'completada', finishedAt:f.finishedAt||new Date().toISOString()} :
+                  {...f, status:'pendiente', startedAt:null, finishedAt:null}
+                )}};
+              });
+            }}/>
+          : vista==='dashboard'
+            ? <Dashboard palas={lista} onSelect={setPalaSel}/>
+            : <Trabajador palas={lista} trab={trab} setTrab={setTrab} onSelect={setPalaSel} iniciar={iniciar} completar={completar}/>
         }
       </main>
       {palaSel && palas[palaSel] && (
         <Detalle pala={palas[palaSel]} onClose={()=>setPalaSel(null)} iniciar={iniciar} completar={completar} addNota={addNota} retroceder={retroceder}/>
       )}
+    </div>
+  );
+}
+
+function Supervisor({palas, onSelect, cambiarFase}) {
+  const [busqueda, setBusqueda] = useState('');
+  const lista = palas
+    .filter(p => !busqueda.trim() || p.id.toLowerCase().includes(busqueda.toLowerCase()) || p.product.toLowerCase().includes(busqueda.toLowerCase()))
+    .sort((a,b) => new Date(a.orderCreatedAt) - new Date(b.orderCreatedAt));
+  return (
+    <div style={{display:'flex',flexDirection:'column',gap:16}}>
+      <div style={{background:'#1e1030',border:'1px solid #9333ea',borderRadius:12,padding:12,fontSize:13,color:'#c084fc'}}>
+        🔧 Modo supervisor — puedes mover cualquier pala a cualquier fase directamente.
+      </div>
+      <input value={busqueda} onChange={e=>setBusqueda(e.target.value)} placeholder="🔍 Buscar pala…" style={{width:'100%',background:'#111',border:'1px solid #444',borderRadius:12,padding:'12px 16px',color:'white',fontSize:15,boxSizing:'border-box'}}/>
+      <div style={{display:'flex',flexDirection:'column',gap:8}}>
+        {lista.map(pala => {
+          const fId = faseActualId(pala) || (estaCompletada(pala) ? 10 : 1);
+          const faseActual = FASES.find(f => f.id === fId);
+          return (
+            <div key={pala.id} style={{background:'#111',border:'1px solid #333',borderRadius:14,padding:14}}>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:8,marginBottom:10}}>
+                <div style={{display:'flex',alignItems:'center',gap:8}}>
+                  <span style={{fontWeight:800,fontSize:16}}>{pala.id}</span>
+                  <Iconos pala={pala}/>
+                  <span style={{color:'#888',fontSize:13}}>{pala.product}</span>
+                </div>
+                <button onClick={()=>onSelect(pala.id)} style={{padding:'6px 12px',borderRadius:8,background:'#222',color:'#f5c518',border:'1px solid #f5c518',fontSize:13,fontWeight:600}}>Ver ficha</button>
+              </div>
+              <div style={{fontSize:13,color:'#888',marginBottom:8}}>
+                Fase actual: <span style={{color:'#f5c518',fontWeight:700}}>{fId} — {faseActual?.nombre}</span> · {faseActual?.responsable}
+              </div>
+              <div style={{display:'flex',flexWrap:'wrap',gap:6}}>
+                {FASES.map(f => {
+                  const fase = pala.phases.find(p=>p.id===f.id);
+                  const esActual = f.id === fId;
+                  return (
+                    <button key={f.id} onClick={()=>cambiarFase(pala.id, f.id)}
+                      style={{padding:'6px 10px',borderRadius:8,fontSize:12,fontWeight:600,border:'none',cursor:'pointer',
+                        background: esActual ? '#f5c518' : fase.status==='completada' ? '#0d2e0d' : '#222',
+                        color: esActual ? '#000' : fase.status==='completada' ? '#4ade80' : '#888',
+                        outline: esActual ? '2px solid #f5c518' : 'none'
+                      }}
+                      title={`Mover a fase ${f.id}: ${f.nombre}`}
+                    >
+                      {f.id}. {f.nombre.length > 10 ? f.nombre.slice(0,10)+'…' : f.nombre}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
