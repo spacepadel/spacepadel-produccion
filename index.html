@@ -206,25 +206,7 @@ function App() {
     });
   }, [palas]);
 
-  useEffect(() => {
-    const iv = setInterval(async () => {
-      try {
-        const st = await dbGet(KEY_STATE);
-        if (!st?.palas) return;
-        setPalas(local => {
-          let changed = false;
-          const merged = { ...local };
-          for (const [id, remote] of Object.entries(st.palas)) {
-            if (!local[id] || (remote.lastModified||0) > (local[id]?.lastModified||0)) {
-              merged[id] = remote; changed = true;
-            }
-          }
-          return changed ? merged : local;
-        });
-      } catch(_) {}
-    }, POLL_MS);
-    return () => clearInterval(iv);
-  }, []);
+
 
   async function refreshOrders() {
     setRefreshing(true);
@@ -235,6 +217,7 @@ function App() {
       if (data.ok) {
         setPalas(prev => buildPalas(data.orders, prev));
         setRefreshMsg(`✅ ${data.count} pedidos actualizados`);
+        setTimeout(() => window.location.reload(), 1000);
       } else {
         setRefreshMsg(`❌ Error: ${data.error}`);
       }
