@@ -187,12 +187,15 @@ function App() {
   const justLoaded = useRef(true);
 
   useEffect(() => {
-    setPalas(buildPalas(ORDERS, {}));
-    justLoaded.current = true;
     (async () => {
+      // Primero carga el estado de fases desde Supabase
       const st = await dbGet(KEY_STATE);
+      const storedPalas = st?.palas || {};
+      // Luego intenta cargar pedidos desde Supabase (más recientes que el array hardcodeado)
+      const stOrders = await dbGet(KEY_ORDERS);
+      const ordersToUse = stOrders?.orders?.length ? stOrders.orders : ORDERS;
       justLoaded.current = true;
-      setPalas(buildPalas(ORDERS, st?.palas || {}));
+      setPalas(buildPalas(ordersToUse, storedPalas));
       justLoaded.current = true;
     })();
   }, []);
