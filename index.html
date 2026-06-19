@@ -23,7 +23,6 @@ const SUPABASE_URL = 'https://deafcxizysvbnbgailno.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_G1-WfUDe-Yq8aFxghbWYSA_Xxu7awui';
 const KEY_STATE    = 'sp-state-v1';
 const KEY_ORDERS   = 'sp-orders-v1';
-const POLL_MS      = 5000;
 
 async function dbGet(key) {
   try {
@@ -65,31 +64,43 @@ const FASES = [
   { id:9,  nombre:'Empaquetado',            responsable:'Juan Ángel'},
   { id:10, nombre:'Enviado',                responsable:'Juan Ángel'},
 ];
+
 const TRABAJADORES = [
-  { nombre:'Queva',      horasDia:4, diasSemana:5, fases:[1] },
-  { nombre:'Tadeo',      horasDia:4, diasSemana:5, fases:[2,3,5] },
-  { nombre:'Juan Ángel', horasDia:8, diasSemana:6, fases:[4,6,7,8,9,10] },
+  { nombre:'Queva',      fases:[1] },
+  { nombre:'Tadeo',      fases:[2,3,5] },
+  { nombre:'Juan Ángel', fases:[4,6,7,8,9,10] },
 ];
+
 const AUTORES = ['Queva','Tadeo','Juan Ángel','Supervisor'];
-const ORDERS = [
-  { id:'gid://shopify/Order/8460760580430', name:'#1538', createdAt:'2026-05-11T12:38:25Z', customerName:'Cliente (invitado)',       financialStatus:'PENDING', fulfillmentStatus:'UNFULFILLED', cancelledAt:null, note:null,                                                                  lineItems:[{title:'pala el bosque',quantity:1}] },
-  { id:'gid://shopify/Order/8490862182734', name:'#1543', createdAt:'2026-05-20T19:30:07Z', customerName:'Cliente (invitado)',       financialStatus:'PENDING', fulfillmentStatus:'UNFULFILLED', cancelledAt:null, note:null,                                                                  lineItems:[{title:'jaime iñaki',quantity:1}] },
-  { id:'gid://shopify/Order/8519371751758', name:'#1544', createdAt:'2026-05-25T02:08:25Z', customerName:'Matin Vera Bacovic',       financialStatus:'PAID',    fulfillmentStatus:'UNFULFILLED', cancelledAt:null, note:null,                                                                  lineItems:[{title:'pala personalizada',quantity:1}] },
-  { id:'gid://shopify/Order/8541800399182', name:'#1545', createdAt:'2026-05-31T17:28:49Z', customerName:'Cliente (invitado)',       financialStatus:'PENDING', fulfillmentStatus:'UNFULFILLED', cancelledAt:null, note:'Gold tiger',                                                          lineItems:[{title:'Pala personalizada PRO',quantity:2}] },
-  { id:'gid://shopify/Order/8544062210382', name:'#1546', createdAt:'2026-06-01T10:11:25Z', customerName:'Cliente (invitado)',       financialStatus:'PENDING', fulfillmentStatus:'UNFULFILLED', cancelledAt:null, note:'adri garcia',                                                         lineItems:[{title:'pala personalizada',quantity:1},{title:'pala personalizada diamante',quantity:1}] },
-  { id:'gid://shopify/Order/8544065749326', name:'#1547', createdAt:'2026-06-01T10:13:08Z', customerName:'Cliente (invitado)',       financialStatus:'PENDING', fulfillmentStatus:'UNFULFILLED', cancelledAt:null, note:null,                                                                  lineItems:[{title:'pala junior boda',quantity:2}] },
-  { id:'gid://shopify/Order/8544097993038', name:'#1548', createdAt:'2026-06-01T10:27:45Z', customerName:'Cliente (invitado)',       financialStatus:'PENDING', fulfillmentStatus:'UNFULFILLED', cancelledAt:null, note:'luis 18k roja lagrima',                                               lineItems:[{title:'pala personalizada luis',quantity:1}] },
-  { id:'gid://shopify/Order/8548190093646', name:'#1549', createdAt:'2026-06-02T10:36:42Z', customerName:'Cliente (invitado)',       financialStatus:'PENDING', fulfillmentStatus:'UNFULFILLED', cancelledAt:null, note:'molde diamante \n12k\nctrl \n',                                       lineItems:[{title:'pala maxi',quantity:1}] },
-  { id:'gid://shopify/Order/8548191732046', name:'#1550', createdAt:'2026-06-02T10:37:22Z', customerName:'Cliente (invitado)',       financialStatus:'PENDING', fulfillmentStatus:'UNFULFILLED', cancelledAt:null, note:'18k\nctrl\nlagrima\n',                                                lineItems:[{title:'pala monica',quantity:1}] },
-  { id:'gid://shopify/Order/8554841932110', name:'#1551', createdAt:'2026-06-03T05:35:29Z', customerName:'Cliente (invitado)',       financialStatus:'PAID',    fulfillmentStatus:'UNFULFILLED', cancelledAt:null, note:null,                                                                  lineItems:[{title:'dani garcía',quantity:3}] },
-  { id:'gid://shopify/Order/8554844062030', name:'#1552', createdAt:'2026-06-03T05:36:23Z', customerName:'Cliente (invitado)',       financialStatus:'PAID',    fulfillmentStatus:'UNFULFILLED', cancelledAt:null, note:'regalo profesor',                                                     lineItems:[{title:'pala profesora',quantity:1}] },
-  { id:'gid://shopify/Order/8554847863118', name:'#1553', createdAt:'2026-06-03T05:38:04Z', customerName:'Cliente (invitado)',       financialStatus:'PAID',    fulfillmentStatus:'UNFULFILLED', cancelledAt:null, note:'lagrima\n12k \nhybr',                                                 lineItems:[{title:'daniel marcelo',quantity:1}] },
-  { id:'gid://shopify/Order/8554853892430', name:'#1554', createdAt:'2026-06-03T05:40:41Z', customerName:'Cliente (invitado)',       financialStatus:'PAID',    fulfillmentStatus:'UNFULFILLED', cancelledAt:null, note:'diamante 18k hybr\n\n+34 652 66 91 09\n\n',                           lineItems:[{title:'pala personalizada',quantity:1}] },
-  { id:'gid://shopify/Order/8554856677710', name:'#1555', createdAt:'2026-06-03T05:42:07Z', customerName:'Cliente (invitado)',       financialStatus:'PAID',    fulfillmentStatus:'UNFULFILLED', cancelledAt:null, note:'junior de fibra de carbono (1 carbono 3k normal y 1 de vidrio)',     lineItems:[{title:'junior de carbono',quantity:1}] },
-  { id:'gid://shopify/Order/8556580208974', name:'#1556', createdAt:'2026-06-03T14:26:31Z', customerName:'Cliente (invitado)',       financialStatus:'PAID',    fulfillmentStatus:'UNFULFILLED', cancelledAt:null, note:'12k ctrl lagrima\n+34 654 33 00 47',                                  lineItems:[{title:'pala personalizada',quantity:1}] },
-  { id:'gid://shopify/Order/8557274038606', name:'#1557', createdAt:'2026-06-03T18:27:47Z', customerName:'Cliente (invitado)',       financialStatus:'PAID',    fulfillmentStatus:'UNFULFILLED', cancelledAt:null, note:null,                                                                  lineItems:[{title:'ENVÍO URGENTE',quantity:1}] },
-  { id:'gid://shopify/Order/8557386203470', name:'#1558', createdAt:'2026-06-03T19:12:27Z', customerName:'Daniel Gracia de Miguel',  financialStatus:'PAID',    fulfillmentStatus:'UNFULFILLED', cancelledAt:null, note:null,                                                                  lineItems:[{title:'Pala personalizada PRO',quantity:1}] },
-  { id:'gid://shopify/Order/8559631499598', name:'#1559', createdAt:'2026-06-04T17:47:14Z', customerName:'Cliente (invitado)',       financialStatus:'PAID',    fulfillmentStatus:'UNFULFILLED', cancelledAt:null, note:null,                                                                  lineItems:[{title:'pala gratis',quantity:1}] },
+
+const ORDERS_FALLBACK = [
+  { id:'gid://shopify/Order/8544097993038', name:'#1548', createdAt:'2026-06-01T10:27:45Z', customerName:'Cliente (invitado)', financialStatus:'PENDING', fulfillmentStatus:'UNFULFILLED', cancelledAt:null, note:'luis 18k roja lagrima', lineItems:[{title:'pala personalizada luis',quantity:1}] },
+  { id:'gid://shopify/Order/8544065749326', name:'#1547', createdAt:'2026-06-01T10:13:08Z', customerName:'Cliente (invitado)', financialStatus:'PENDING', fulfillmentStatus:'UNFULFILLED', cancelledAt:null, note:null, lineItems:[{title:'pala junior boda',quantity:2}] },
+  { id:'gid://shopify/Order/8519371751758', name:'#1544', createdAt:'2026-05-25T02:08:25Z', customerName:'Matin Vera Bacovic', financialStatus:'PAID', fulfillmentStatus:'UNFULFILLED', cancelledAt:null, note:null, lineItems:[{title:'pala personalizada',quantity:1}] },
+  { id:'gid://shopify/Order/8556580208974', name:'#1556', createdAt:'2026-06-03T14:26:31Z', customerName:'Cliente (invitado)', financialStatus:'PAID', fulfillmentStatus:'UNFULFILLED', cancelledAt:null, note:'12k ctrl lagrima\n+34 654 33 00 47', lineItems:[{title:'pala personalizada',quantity:1}] },
+  { id:'gid://shopify/Order/8554856677710', name:'#1555', createdAt:'2026-06-03T05:42:07Z', customerName:'Cliente (invitado)', financialStatus:'PAID', fulfillmentStatus:'UNFULFILLED', cancelledAt:null, note:'junior de fibra de carbono', lineItems:[{title:'junior de carbono',quantity:1}] },
+  { id:'gid://shopify/Order/8554853892430', name:'#1554', createdAt:'2026-06-03T05:40:41Z', customerName:'Cliente (invitado)', financialStatus:'PAID', fulfillmentStatus:'UNFULFILLED', cancelledAt:null, note:'diamante 18k hybr', lineItems:[{title:'pala personalizada',quantity:1}] },
+  { id:'gid://shopify/Order/8554847863118', name:'#1553', createdAt:'2026-06-03T05:38:04Z', customerName:'Cliente (invitado)', financialStatus:'PAID', fulfillmentStatus:'UNFULFILLED', cancelledAt:null, note:'lagrima\n12k \nhybr', lineItems:[{title:'daniel marcelo',quantity:1}] },
+  { id:'gid://shopify/Order/8554844062030', name:'#1552', createdAt:'2026-06-03T05:36:23Z', customerName:'Cliente (invitado)', financialStatus:'PAID', fulfillmentStatus:'UNFULFILLED', cancelledAt:null, note:'regalo profesor', lineItems:[{title:'pala profesora',quantity:1}] },
+  { id:'gid://shopify/Order/8554841932110', name:'#1551', createdAt:'2026-06-03T05:35:29Z', customerName:'Cliente (invitado)', financialStatus:'PAID', fulfillmentStatus:'UNFULFILLED', cancelledAt:null, note:null, lineItems:[{title:'dani garcía',quantity:3}] },
+  { id:'gid://shopify/Order/8557274038606', name:'#1557', createdAt:'2026-06-03T18:27:47Z', customerName:'Cliente (invitado)', financialStatus:'PAID', fulfillmentStatus:'UNFULFILLED', cancelledAt:null, note:null, lineItems:[{title:'ENVÍO URGENTE',quantity:1}] },
+  { id:'gid://shopify/Order/8559631499598', name:'#1559', createdAt:'2026-06-04T17:47:14Z', customerName:'Cliente (invitado)', financialStatus:'PAID', fulfillmentStatus:'UNFULFILLED', cancelledAt:null, note:null, lineItems:[{title:'pala gratis',quantity:1}] },
+  { id:'gid://shopify/Order/8560829071694', name:'#1560', createdAt:'2026-06-05T06:06:51Z', customerName:'Cliente (invitado)', financialStatus:'PAID', fulfillmentStatus:'UNFULFILLED', cancelledAt:null, note:null, lineItems:[{title:'pala personalizada',quantity:1}] },
+  { id:'gid://shopify/Order/8568686051662', name:'#1562', createdAt:'2026-06-08T06:51:22Z', customerName:'Cliente (invitado)', financialStatus:'PENDING', fulfillmentStatus:'UNFULFILLED', cancelledAt:null, note:null, lineItems:[{title:'pala personalizada',quantity:1}] },
+  { id:'gid://shopify/Order/8568688017742', name:'#1563', createdAt:'2026-06-08T06:53:16Z', customerName:'Cliente (invitado)', financialStatus:'PAID', fulfillmentStatus:'UNFULFILLED', cancelledAt:null, note:null, lineItems:[{title:'pala personalizada',quantity:1}] },
+  { id:'gid://shopify/Order/8571556790606', name:'#1564', createdAt:'2026-06-09T06:42:05Z', customerName:'Cliente (invitado)', financialStatus:'PAID', fulfillmentStatus:'UNFULFILLED', cancelledAt:null, note:null, lineItems:[{title:'pala personalizada',quantity:1}] },
+  { id:'gid://shopify/Order/8571558658382', name:'#1565', createdAt:'2026-06-09T06:43:20Z', customerName:'Cliente (invitado)', financialStatus:'PAID', fulfillmentStatus:'UNFULFILLED', cancelledAt:null, note:null, lineItems:[{title:'pala personalizada',quantity:2}] },
+  { id:'gid://shopify/Order/8571559412046', name:'#1566', createdAt:'2026-06-09T06:43:51Z', customerName:'Cliente (invitado)', financialStatus:'PENDING', fulfillmentStatus:'UNFULFILLED', cancelledAt:null, note:null, lineItems:[{title:'pala personalizada',quantity:1}] },
+  { id:'gid://shopify/Order/8572261794126', name:'#1567', createdAt:'2026-06-09T12:35:14Z', customerName:'Cliente (invitado)', financialStatus:'PENDING', fulfillmentStatus:'UNFULFILLED', cancelledAt:null, note:null, lineItems:[{title:'pala personalizada',quantity:1}] },
+  { id:'gid://shopify/Order/8585298182478', name:'#1568', createdAt:'2026-06-11T18:40:31Z', customerName:'Cliente (invitado)', financialStatus:'PAID', fulfillmentStatus:'UNFULFILLED', cancelledAt:null, note:null, lineItems:[{title:'pala personalizada',quantity:1}] },
+  { id:'gid://shopify/Order/8585299853646', name:'#1569', createdAt:'2026-06-11T18:41:26Z', customerName:'Cliente (invitado)', financialStatus:'PENDING', fulfillmentStatus:'UNFULFILLED', cancelledAt:null, note:null, lineItems:[{title:'pala personalizada',quantity:1}] },
+  { id:'gid://shopify/Order/8585302966606', name:'#1570', createdAt:'2026-06-11T18:43:29Z', customerName:'Cliente (invitado)', financialStatus:'PAID', fulfillmentStatus:'UNFULFILLED', cancelledAt:null, note:null, lineItems:[{title:'pala personalizada',quantity:1}] },
+  { id:'gid://shopify/Order/8585312895310', name:'#1571', createdAt:'2026-06-11T18:49:19Z', customerName:'Cliente (invitado)', financialStatus:'PAID', fulfillmentStatus:'UNFULFILLED', cancelledAt:null, note:null, lineItems:[{title:'pala personalizada',quantity:1}] },
+  { id:'gid://shopify/Order/8585314894158', name:'#1572', createdAt:'2026-06-11T18:50:27Z', customerName:'Cliente (invitado)', financialStatus:'PAID', fulfillmentStatus:'UNFULFILLED', cancelledAt:null, note:null, lineItems:[{title:'pala personalizada',quantity:1}] },
+  { id:'gid://shopify/Order/8585328853326', name:'#1573', createdAt:'2026-06-11T18:55:27Z', customerName:'Cliente (invitado)', financialStatus:'PAID', fulfillmentStatus:'UNFULFILLED', cancelledAt:null, note:null, lineItems:[{title:'pala personalizada',quantity:2}] },
+  { id:'gid://shopify/Order/8589966016846', name:'#1574', createdAt:'2026-06-13T08:43:31Z', customerName:'Cliente (invitado)', financialStatus:'PAID', fulfillmentStatus:'UNFULFILLED', cancelledAt:null, note:null, lineItems:[{title:'pala personalizada',quantity:1}] },
+  { id:'gid://shopify/Order/8589972865358', name:'#1575', createdAt:'2026-06-13T08:45:49Z', customerName:'Cliente (invitado)', financialStatus:'PAID', fulfillmentStatus:'UNFULFILLED', cancelledAt:null, note:null, lineItems:[{title:'pala personalizada',quantity:1}] },
+  { id:'gid://shopify/Order/8609340850510', name:'#1576', createdAt:'2026-06-16T06:30:48Z', customerName:'Christophe POUTET', financialStatus:'PAID', fulfillmentStatus:'UNFULFILLED', cancelledAt:null, note:null, lineItems:[{title:'pala personalizada',quantity:1}] },
 ];
 
 function buildPalas(orders, stored) {
@@ -125,32 +136,23 @@ function faseActualId(pala) {
   const prev = pala.phases.find(p => p.id === pend.id - 1);
   return prev?.status === 'completada' ? pend.id : null;
 }
-// Pala completada = todas las fases completadas
-function estaCompletada(p) { return p.phases.every(f => f.status === 'completada'); }
 
-// Filtra palas que no deben mostrarse:
-// - completadas hace más de 24h
-// - en fase 10 completada (independientemente del tiempo)
+function estaCompletada(p) { return p.phases.every(f => f.status === 'completada'); }
 function debeOcultarse(p) {
   if (!estaCompletada(p)) return false;
   const fase10 = p.phases.find(f => f.id === 10);
   if (!fase10?.finishedAt) return false;
-  const completadaHace = Date.now() - new Date(fase10.finishedAt).getTime();
-  return completadaHace > 24 * 60 * 60 * 1000;
+  return Date.now() - new Date(fase10.finishedAt).getTime() > 24 * 60 * 60 * 1000;
 }
-function progreso(p)       { return Math.round(p.phases.filter(f => f.status === 'completada').length / FASES.length * 100); }
-function tieneAnomalia(p)  { return p.notes.some(n => n.type === 'anomalia'); }
-function tieneInfo(p)      { return p.notes.some(n => n.type === 'info'); }
-function fmt(ts)    { if (!ts) return '—'; return new Date(ts).toLocaleString('es-ES',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}); }
-function fmtF(ts)   { return new Date(ts).toLocaleDateString('es-ES',{day:'2-digit',month:'2-digit',year:'numeric'}); }
-function fmtH(ts)   { if (!ts) return '—'; return new Date(ts).toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'}); }
+function progreso(p) { return Math.round(p.phases.filter(f => f.status === 'completada').length / FASES.length * 100); }
+function tieneAnomalia(p) { return p.notes.some(n => n.type === 'anomalia'); }
+function tieneInfo(p) { return p.notes.some(n => n.type === 'info'); }
+function fmt(ts) { if (!ts) return '—'; return new Date(ts).toLocaleString('es-ES',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}); }
+function fmtF(ts) { return new Date(ts).toLocaleDateString('es-ES',{day:'2-digit',month:'2-digit',year:'numeric'}); }
+function fmtH(ts) { if (!ts) return '—'; return new Date(ts).toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'}); }
 
 function Badge({status}) {
-  const S = {
-    pendiente:  {bg:'#222',  color:'#aaa',    border:'1px solid #444'},
-    en_proceso: {bg:'#3a2e00',color:'#f5c518',border:'1px solid #f5c518'},
-    completada: {bg:'#0d2e0d',color:'#4ade80',border:'1px solid #4ade80'},
-  };
+  const S = { pendiente:{bg:'#222',color:'#aaa',border:'1px solid #444'}, en_proceso:{bg:'#3a2e00',color:'#f5c518',border:'1px solid #f5c518'}, completada:{bg:'#0d2e0d',color:'#4ade80',border:'1px solid #4ade80'} };
   const dot = {pendiente:'#666',en_proceso:'#f5c518',completada:'#4ade80'};
   const lbl = {pendiente:'Pendiente',en_proceso:'En proceso',completada:'Completada'};
   return <span style={{...S[status],display:'inline-flex',alignItems:'center',gap:6,padding:'4px 12px',borderRadius:999,fontSize:14,fontWeight:600}}>
@@ -170,46 +172,49 @@ function Barra({pct}) {
 function Iconos({pala}) {
   return <span style={{display:'inline-flex',gap:4}}>
     {tieneAnomalia(pala) && <span title="Anomalía">⚠️</span>}
-    {pala.shopifyNote    && <span title={pala.shopifyNote}>💬</span>}
-    {tieneInfo(pala)     && <span title="Nota interna">📝</span>}
+    {pala.shopifyNote && <span title={pala.shopifyNote}>💬</span>}
+    {tieneInfo(pala) && <span title="Nota interna">📝</span>}
   </span>;
 }
 
 function App() {
-  const [palas, setPalas]       = useState({});
-  const [vista, setVista]       = useState('dashboard');
-  const [palaSel, setPalaSel]   = useState(null);
-  const [trab, setTrab]         = useState(TRABAJADORES[0].nombre);
-  const [saveStatus, setSave]   = useState('idle');
+  const [palas, setPalas] = useState({});
+  const [vista, setVista] = useState('dashboard');
+  const [vistaSuper, setVistaSuper] = useState(false);
+  const [palaSel, setPalaSel] = useState(null);
+  const [trab, setTrab] = useState(TRABAJADORES[0].nombre);
+  const [saveStatus, setSave] = useState('idle');
   const [saveTime, setSaveTime] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
   const [refreshMsg, setRefreshMsg] = useState('');
+  const appReady = useRef(false);
 
-
+  // Carga inicial desde Supabase
   useEffect(() => {
     (async () => {
-      // Primero carga el estado de fases desde Supabase
-      const st = await dbGet(KEY_STATE);
-      const storedPalas = st?.palas || {};
-      // Luego intenta cargar pedidos desde Supabase (más recientes que el array hardcodeado)
-      const stOrders = await dbGet(KEY_ORDERS);
-      const ordersToUse = stOrders?.orders?.length ? stOrders.orders : ORDERS;
-      justLoaded.current = true;
-      setPalas(buildPalas(ordersToUse, storedPalas));
-      justLoaded.current = true;
+      try {
+        const [st, stOrders] = await Promise.all([dbGet(KEY_STATE), dbGet(KEY_ORDERS)]);
+        const storedPalas = st?.palas || {};
+        const ordersToUse = stOrders?.orders?.length ? stOrders.orders : ORDERS_FALLBACK;
+        setPalas(buildPalas(ordersToUse, storedPalas));
+      } catch(_) {
+        setPalas(buildPalas(ORDERS_FALLBACK, {}));
+      } finally {
+        setTimeout(() => { appReady.current = true; }, 500);
+      }
     })();
   }, []);
 
+  // Autosave cuando cambian las palas (solo después de que la app esté lista)
   useEffect(() => {
+    if (!appReady.current) return;
     if (!Object.keys(palas).length) return;
-    if (justLoaded.current) { justLoaded.current = false; return; }
     setSave('saving');
     dbSet(KEY_STATE, { palas, modified: Date.now() }).then(() => {
-      setSave('saved'); setSaveTime(Date.now());
+      setSave('saved');
+      setSaveTime(Date.now());
     });
   }, [palas]);
-
-
 
   async function refreshOrders() {
     setRefreshing(true);
@@ -218,28 +223,16 @@ function App() {
       const res = await fetch('/api/refresh');
       const data = await res.json();
       if (data.ok) {
-        setPalas(prev => buildPalas(data.orders, prev));
         setRefreshMsg(`✅ ${data.count} pedidos actualizados`);
         setTimeout(() => window.location.reload(), 1000);
       } else {
         setRefreshMsg(`❌ Error: ${data.error}`);
+        setRefreshing(false);
       }
     } catch(e) {
       setRefreshMsg(`❌ ${e.message}`);
+      setRefreshing(false);
     }
-    setRefreshing(false);
-    setTimeout(() => setRefreshMsg(''), 4000);
-  }
-
-  function retroceder(palaId, faseId) {
-    // Resetea la fase indicada y la anterior a pendiente
-    setPalas(p => {
-      const x = p[palaId];
-      return {...p, [palaId]: {...x, lastModified:Date.now(), phases: x.phases.map(f =>
-        f.id === faseId ? {...f, status:'pendiente', startedAt:null, finishedAt:null} :
-        f.id === faseId - 1 ? {...f, status:'pendiente', startedAt:null, finishedAt:null} : f
-      )}};
-    });
   }
 
   function iniciar(palaId, fId) {
@@ -248,6 +241,9 @@ function App() {
   function completar(palaId, fId) {
     setPalas(p => { const x=p[palaId]; return {...p,[palaId]:{...x,lastModified:Date.now(),phases:x.phases.map(f=>f.id===fId?{...f,status:'completada',finishedAt:new Date().toISOString()}:f)}}; });
   }
+  function retroceder(palaId, faseId) {
+    setPalas(p => { const x=p[palaId]; return {...p,[palaId]:{...x,lastModified:Date.now(),phases:x.phases.map(f=>f.id===faseId?{...f,status:'pendiente',startedAt:null,finishedAt:null}:f.id===faseId-1?{...f,status:'pendiente',startedAt:null,finishedAt:null}:f)}}; });
+  }
   function addNota(palaId, {texto,tipo,autor}) {
     setPalas(p => {
       const x=p[palaId]; const fId=faseActualId(x); const fase=FASES.find(f=>f.id===fId);
@@ -255,9 +251,11 @@ function App() {
       return {...p,[palaId]:{...x,lastModified:Date.now(),notes:[...x.notes,nota]}};
     });
   }
+  function cambiarFase(palaId, faseId) {
+    setPalas(p => { const x=p[palaId]; return {...p,[palaId]:{...x,lastModified:Date.now(),phases:x.phases.map(f=>f.id===faseId?{...f,status:'en_proceso',startedAt:new Date().toISOString(),finishedAt:null}:f.id<faseId?{...f,status:'completada',finishedAt:f.finishedAt||new Date().toISOString()}:{...f,status:'pendiente',startedAt:null,finishedAt:null})}}; });
+  }
 
   const lista = Object.values(palas).filter(p => !debeOcultarse(p));
-  const [vistaSuper, setVistaSuper] = useState(false);
   const saveDot = saveStatus==='saved'?'#4ade80':saveStatus==='saving'?'#f5c518':'#555';
   const saveLbl = saveStatus==='saving'?'Guardando…':saveStatus==='saved'?`Guardado ${fmtH(saveTime)}`:'Sin cambios';
 
@@ -266,37 +264,27 @@ function App() {
       <header style={{background:'#111',borderBottom:'1px solid #333',position:'sticky',top:0,zIndex:20}}>
         <div style={{maxWidth:900,margin:'0 auto',padding:'12px 16px',display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:12}}>
           <div>
-            <img src="https://spacepadel.es/wp-content/uploads/2024/03/SPACEPADEL_logotipo_blanco.png" alt="SPACEPADEL" style={{height:36,width:'auto'}} onError={e=>{e.target.style.display='none';e.target.nextSibling.style.display='block';}} />
-            <span style={{display:'none',fontSize:22,fontWeight:900,letterSpacing:2}}>SPACEPADEL</span>
-            <div style={{fontSize:12,color:'#888'}}>🛒 {ORDERS.length} pedidos · {lista.length} palas</div>
+            <div style={{fontSize:22,fontWeight:900,letterSpacing:2}}>SPACEPADEL</div>
+            <div style={{fontSize:12,color:'#888'}}>🛒 {lista.length} palas en producción</div>
           </div>
           <div style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}>
             <div style={{display:'flex',alignItems:'center',gap:6,fontSize:12,color:'#888',background:'#1a1a1a',border:'1px solid #333',borderRadius:8,padding:'6px 10px'}}>
               <span style={{width:8,height:8,borderRadius:'50%',background:saveDot,display:'inline-block'}}/>
               {saveLbl}
             </div>
-            <button onClick={refreshOrders} disabled={refreshing} style={{padding:'10px 18px',borderRadius:10,fontWeight:700,fontSize:15,border:'none',background:'#333',color:'#fff',opacity:refreshing?0.6:1,display:'flex',alignItems:'center',gap:8}}>
-              {refreshing ? '⏳ Actualizando…' : '🔄 Actualizar pedidos'}
+            <button onClick={refreshOrders} disabled={refreshing} style={{padding:'10px 18px',borderRadius:10,fontWeight:700,fontSize:15,border:'none',background:'#333',color:'#fff',opacity:refreshing?0.6:1}}>
+              {refreshing?'⏳ Actualizando…':'🔄 Actualizar pedidos'}
             </button>
             {refreshMsg && <span style={{fontSize:13,color:refreshMsg.startsWith('✅')?'#4ade80':'#f87171'}}>{refreshMsg}</span>}
-            <button onClick={()=>{setVista('dashboard');setPalaSel(null);}} style={{padding:'10px 18px',borderRadius:10,fontWeight:700,fontSize:15,border:'none',background:vista==='dashboard'&&!vistaSuper?'#f5c518':'#222',color:vista==='dashboard'&&!vistaSuper?'#000':'#fff'}}>📋 Dashboard</button>
-            <button onClick={()=>{setVista('trabajador');setPalaSel(null);setVistaSuper(false);}} style={{padding:'10px 18px',borderRadius:10,fontWeight:700,fontSize:15,border:'none',background:vista==='trabajador'&&!vistaSuper?'#f5c518':'#222',color:vista==='trabajador'&&!vistaSuper?'#000':'#fff'}}>👷 Por trabajador</button>
+            <button onClick={()=>{setVista('dashboard');setVistaSuper(false);setPalaSel(null);}} style={{padding:'10px 18px',borderRadius:10,fontWeight:700,fontSize:15,border:'none',background:vista==='dashboard'&&!vistaSuper?'#f5c518':'#222',color:vista==='dashboard'&&!vistaSuper?'#000':'#fff'}}>📋 Dashboard</button>
+            <button onClick={()=>{setVista('trabajador');setVistaSuper(false);setPalaSel(null);}} style={{padding:'10px 18px',borderRadius:10,fontWeight:700,fontSize:15,border:'none',background:vista==='trabajador'&&!vistaSuper?'#f5c518':'#222',color:vista==='trabajador'&&!vistaSuper?'#000':'#fff'}}>👷 Por trabajador</button>
             <button onClick={()=>{setVistaSuper(v=>!v);setPalaSel(null);}} style={{padding:'10px 18px',borderRadius:10,fontWeight:700,fontSize:15,border:'none',background:vistaSuper?'#9333ea':'#222',color:'#fff'}}>🔧 Supervisor</button>
           </div>
         </div>
       </header>
       <main style={{maxWidth:900,margin:'0 auto',padding:16}}>
         {vistaSuper
-          ? <Supervisor palas={lista} onSelect={setPalaSel} cambiarFase={(palaId, faseId) => {
-              setPalas(p => {
-                const x = p[palaId];
-                return {...p, [palaId]: {...x, lastModified:Date.now(), phases: x.phases.map(f =>
-                  f.id === faseId ? {...f, status:'en_proceso', startedAt:new Date().toISOString(), finishedAt:null} :
-                  f.id < faseId ? {...f, status:'completada', finishedAt:f.finishedAt||new Date().toISOString()} :
-                  {...f, status:'pendiente', startedAt:null, finishedAt:null}
-                )}};
-              });
-            }}/>
+          ? <Supervisor palas={lista} onSelect={setPalaSel} cambiarFase={cambiarFase}/>
           : vista==='dashboard'
             ? <Dashboard palas={lista} onSelect={setPalaSel}/>
             : <Trabajador palas={lista} trab={trab} setTrab={setTrab} onSelect={setPalaSel} iniciar={iniciar} completar={completar}/>
@@ -309,60 +297,6 @@ function App() {
   );
 }
 
-function Supervisor({palas, onSelect, cambiarFase}) {
-  const [busqueda, setBusqueda] = useState('');
-  const lista = palas
-    .filter(p => !busqueda.trim() || p.id.toLowerCase().includes(busqueda.toLowerCase()) || p.product.toLowerCase().includes(busqueda.toLowerCase()))
-    .sort((a,b) => new Date(a.orderCreatedAt) - new Date(b.orderCreatedAt));
-  return (
-    <div style={{display:'flex',flexDirection:'column',gap:16}}>
-      <div style={{background:'#1e1030',border:'1px solid #9333ea',borderRadius:12,padding:12,fontSize:13,color:'#c084fc'}}>
-        🔧 Modo supervisor — puedes mover cualquier pala a cualquier fase directamente.
-      </div>
-      <input value={busqueda} onChange={e=>setBusqueda(e.target.value)} placeholder="🔍 Buscar pala…" style={{width:'100%',background:'#111',border:'1px solid #444',borderRadius:12,padding:'12px 16px',color:'white',fontSize:15,boxSizing:'border-box'}}/>
-      <div style={{display:'flex',flexDirection:'column',gap:8}}>
-        {lista.map(pala => {
-          const fId = faseActualId(pala) || (estaCompletada(pala) ? 10 : 1);
-          const faseActual = FASES.find(f => f.id === fId);
-          return (
-            <div key={pala.id} style={{background:'#111',border:'1px solid #333',borderRadius:14,padding:14}}>
-              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:8,marginBottom:10}}>
-                <div style={{display:'flex',alignItems:'center',gap:8}}>
-                  <span style={{fontWeight:800,fontSize:16}}>{pala.id}</span>
-                  <Iconos pala={pala}/>
-                  <span style={{color:'#888',fontSize:13}}>{pala.product}</span>
-                </div>
-                <button onClick={()=>onSelect(pala.id)} style={{padding:'6px 12px',borderRadius:8,background:'#222',color:'#f5c518',border:'1px solid #f5c518',fontSize:13,fontWeight:600}}>Ver ficha</button>
-              </div>
-              <div style={{fontSize:13,color:'#888',marginBottom:8}}>
-                Fase actual: <span style={{color:'#f5c518',fontWeight:700}}>{fId} — {faseActual?.nombre}</span> · {faseActual?.responsable}
-              </div>
-              <div style={{display:'flex',flexWrap:'wrap',gap:6}}>
-                {FASES.map(f => {
-                  const fase = pala.phases.find(p=>p.id===f.id);
-                  const esActual = f.id === fId;
-                  return (
-                    <button key={f.id} onClick={()=>cambiarFase(pala.id, f.id)}
-                      style={{padding:'6px 10px',borderRadius:8,fontSize:12,fontWeight:600,border:'none',cursor:'pointer',
-                        background: esActual ? '#f5c518' : fase.status==='completada' ? '#0d2e0d' : '#222',
-                        color: esActual ? '#000' : fase.status==='completada' ? '#4ade80' : '#888',
-                        outline: esActual ? '2px solid #f5c518' : 'none'
-                      }}
-                      title={`Mover a fase ${f.id}: ${f.nombre}`}
-                    >
-                      {f.id}. {f.nombre.length > 10 ? f.nombre.slice(0,10)+'…' : f.nombre}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
 function Dashboard({palas, onSelect}) {
   const [busqueda, setBusqueda] = useState('');
   const pedidos = {};
@@ -370,10 +304,8 @@ function Dashboard({palas, onSelect}) {
     if (!pedidos[p.orderName]) pedidos[p.orderName]={name:p.orderName,customer:p.customer,createdAt:p.orderCreatedAt,pago:p.pago,shopifyNote:p.shopifyNote,palas:[]};
     pedidos[p.orderName].palas.push(p);
   });
-  const todasListas = Object.values(pedidos).sort((a,b)=>new Date(a.createdAt)-new Date(b.createdAt));
-  const lista = busqueda.trim()
-    ? todasListas.filter(p => p.name.toLowerCase().includes(busqueda.toLowerCase()) || p.customer?.toLowerCase().includes(busqueda.toLowerCase()))
-    : todasListas;
+  const todas = Object.values(pedidos).sort((a,b)=>new Date(a.createdAt)-new Date(b.createdAt));
+  const lista = busqueda.trim() ? todas.filter(p=>p.name.toLowerCase().includes(busqueda.toLowerCase())||p.customer?.toLowerCase().includes(busqueda.toLowerCase())) : todas;
   const anomalias = palas.filter(p=>tieneAnomalia(p)).length;
   return (
     <div style={{display:'flex',flexDirection:'column',gap:16}}>
@@ -385,7 +317,7 @@ function Dashboard({palas, onSelect}) {
           </div>
         ))}
       </div>
-      <input value={busqueda} onChange={e=>setBusqueda(e.target.value)} placeholder="🔍 Buscar por número de pedido o cliente…" style={{width:'100%',background:'#111',border:'1px solid #444',borderRadius:12,padding:'12px 16px',color:'white',fontSize:15,boxSizing:'border-box'}} />
+      <input value={busqueda} onChange={e=>setBusqueda(e.target.value)} placeholder="🔍 Buscar por número de pedido o cliente…" style={{width:'100%',background:'#111',border:'1px solid #444',borderRadius:12,padding:'12px 16px',color:'white',fontSize:15,boxSizing:'border-box'}}/>
       {lista.map(ped => {
         const tot=ped.palas.length*FASES.length;
         const hec=ped.palas.reduce((a,p)=>a+p.phases.filter(f=>f.status==='completada').length,0);
@@ -485,6 +417,43 @@ function Trabajador({palas, trab, setTrab, onSelect, iniciar, completar}) {
   );
 }
 
+function Supervisor({palas, onSelect, cambiarFase}) {
+  const [busqueda, setBusqueda] = useState('');
+  const lista = palas.filter(p=>!busqueda.trim()||p.id.toLowerCase().includes(busqueda.toLowerCase())||p.product.toLowerCase().includes(busqueda.toLowerCase())).sort((a,b)=>new Date(a.orderCreatedAt)-new Date(b.orderCreatedAt));
+  return (
+    <div style={{display:'flex',flexDirection:'column',gap:16}}>
+      <div style={{background:'#1e1030',border:'1px solid #9333ea',borderRadius:12,padding:12,fontSize:13,color:'#c084fc'}}>🔧 Modo supervisor — mueve cualquier pala a cualquier fase.</div>
+      <input value={busqueda} onChange={e=>setBusqueda(e.target.value)} placeholder="🔍 Buscar pala…" style={{width:'100%',background:'#111',border:'1px solid #444',borderRadius:12,padding:'12px 16px',color:'white',fontSize:15,boxSizing:'border-box'}}/>
+      {lista.map(pala => {
+        const fId=faseActualId(pala)||(estaCompletada(pala)?10:1); const faseActual=FASES.find(f=>f.id===fId);
+        return (
+          <div key={pala.id} style={{background:'#111',border:'1px solid #333',borderRadius:14,padding:14}}>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:8,marginBottom:10}}>
+              <div style={{display:'flex',alignItems:'center',gap:8}}>
+                <span style={{fontWeight:800,fontSize:16}}>{pala.id}</span>
+                <Iconos pala={pala}/>
+                <span style={{color:'#888',fontSize:13}}>{pala.product}</span>
+              </div>
+              <button onClick={()=>onSelect(pala.id)} style={{padding:'6px 12px',borderRadius:8,background:'#222',color:'#f5c518',border:'1px solid #f5c518',fontSize:13,fontWeight:600}}>Ver ficha</button>
+            </div>
+            <div style={{fontSize:13,color:'#888',marginBottom:8}}>Fase actual: <span style={{color:'#f5c518',fontWeight:700}}>{fId} — {faseActual?.nombre}</span> · {faseActual?.responsable}</div>
+            <div style={{display:'flex',flexWrap:'wrap',gap:6}}>
+              {FASES.map(f => {
+                const fase=pala.phases.find(p=>p.id===f.id); const esActual=f.id===fId;
+                return (
+                  <button key={f.id} onClick={()=>cambiarFase(pala.id,f.id)} style={{padding:'6px 10px',borderRadius:8,fontSize:12,fontWeight:600,border:'none',cursor:'pointer',background:esActual?'#f5c518':fase.status==='completada'?'#0d2e0d':'#222',color:esActual?'#000':fase.status==='completada'?'#4ade80':'#888'}}>
+                    {f.id}. {f.nombre.length>10?f.nombre.slice(0,10)+'…':f.nombre}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function Detalle({pala, onClose, iniciar, completar, addNota, retroceder}) {
   const [texto,setTexto]=useState('');
   const [tipo,setTipo]=useState('info');
@@ -516,21 +485,19 @@ function Detalle({pala, onClose, iniciar, completar, addNota, retroceder}) {
           {notas.length > 0 && (
             <div>
               <div style={{fontWeight:700,fontSize:16,marginBottom:10}}>📋 Notas e incidencias</div>
-              <div style={{display:'flex',flexDirection:'column',gap:8}}>
-                {notas.map(n=>(
-                  <div key={n.id} style={{background:n.type==='anomalia'?'#2e0d0d':'#111',border:n.type==='anomalia'?'1px solid #f87171':'1px solid #333',borderRadius:12,padding:12}}>
-                    <div style={{display:'flex',justifyContent:'space-between',flexWrap:'wrap',gap:4,marginBottom:4}}>
-                      <div style={{display:'flex',alignItems:'center',gap:6}}>
-                        <span style={{fontWeight:700,fontSize:13}}>{n.author}</span>
-                        <span style={{fontSize:12,padding:'2px 8px',borderRadius:999,background:n.type==='anomalia'?'#3d1515':'#1e1b4b',color:n.type==='anomalia'?'#f87171':'#818cf8'}}>{n.type==='anomalia'?'⚠️ Anomalía':'📝 Info'}</span>
-                      </div>
-                      <span style={{fontSize:12,color:'#666'}}>{fmt(n.timestamp)}</span>
+              {notas.map(n=>(
+                <div key={n.id} style={{background:n.type==='anomalia'?'#2e0d0d':'#111',border:n.type==='anomalia'?'1px solid #f87171':'1px solid #333',borderRadius:12,padding:12,marginBottom:8}}>
+                  <div style={{display:'flex',justifyContent:'space-between',flexWrap:'wrap',gap:4,marginBottom:4}}>
+                    <div style={{display:'flex',alignItems:'center',gap:6}}>
+                      <span style={{fontWeight:700,fontSize:13}}>{n.author}</span>
+                      <span style={{fontSize:12,padding:'2px 8px',borderRadius:999,background:n.type==='anomalia'?'#3d1515':'#1e1b4b',color:n.type==='anomalia'?'#f87171':'#818cf8'}}>{n.type==='anomalia'?'⚠️ Anomalía':'📝 Info'}</span>
                     </div>
-                    <div style={{color:'#ddd',whiteSpace:'pre-wrap'}}>{n.text}</div>
-                    <div style={{fontSize:12,color:'#555',marginTop:4}}>Fase: {n.phaseName}</div>
+                    <span style={{fontSize:12,color:'#666'}}>{fmt(n.timestamp)}</span>
                   </div>
-                ))}
-              </div>
+                  <div style={{color:'#ddd',whiteSpace:'pre-wrap'}}>{n.text}</div>
+                  <div style={{fontSize:12,color:'#555',marginTop:4}}>Fase: {n.phaseName}</div>
+                </div>
+              ))}
             </div>
           )}
           <div>
@@ -549,8 +516,8 @@ function Detalle({pala, onClose, iniciar, completar, addNota, retroceder}) {
                       </div>
                       <div style={{display:'flex',alignItems:'center',gap:8}}>
                         <Badge status={f.status}/>
-                        {f.status==='completada' && fase.id > 1 && (
-                          <button onClick={()=>retroceder(pala.id, fase.id)} style={{padding:'4px 10px',borderRadius:8,background:'#333',color:'#f5c518',border:'1px solid #f5c518',fontSize:12,fontWeight:600,cursor:'pointer'}} title="Retroceder a esta fase">↩ Retroceder</button>
+                        {f.status==='completada' && fase.id>1 && (
+                          <button onClick={()=>retroceder(pala.id,fase.id)} style={{padding:'4px 10px',borderRadius:8,background:'#333',color:'#f5c518',border:'1px solid #f5c518',fontSize:12,fontWeight:600}}>↩ Retroceder</button>
                         )}
                       </div>
                     </div>
@@ -560,8 +527,8 @@ function Detalle({pala, onClose, iniciar, completar, addNota, retroceder}) {
                         {f.finishedAt && <span>Fin: {fmt(f.finishedAt)}</span>}
                       </div>
                     )}
-                    {esAct && f.status==='pendiente'   && <div style={{marginTop:8,paddingLeft:46}}><button onClick={()=>iniciar(pala.id,fase.id)}   style={{padding:'8px 16px',borderRadius:10,background:'#f5c518',color:'#000',fontWeight:700,border:'none'}}>▶ Iniciar fase</button></div>}
-                    {esAct && f.status==='en_proceso'  && <div style={{marginTop:8,paddingLeft:46}}><button onClick={()=>completar(pala.id,fase.id)} style={{padding:'8px 16px',borderRadius:10,background:'#4ade80',color:'#000',fontWeight:700,border:'none'}}>✓ Completar fase</button></div>}
+                    {esAct && f.status==='pendiente' && <div style={{marginTop:8,paddingLeft:46}}><button onClick={()=>iniciar(pala.id,fase.id)} style={{padding:'8px 16px',borderRadius:10,background:'#f5c518',color:'#000',fontWeight:700,border:'none'}}>▶ Iniciar fase</button></div>}
+                    {esAct && f.status==='en_proceso' && <div style={{marginTop:8,paddingLeft:46}}><button onClick={()=>completar(pala.id,fase.id)} style={{padding:'8px 16px',borderRadius:10,background:'#4ade80',color:'#000',fontWeight:700,border:'none'}}>✓ Completar fase</button></div>}
                   </div>
                 );
               })}
@@ -573,12 +540,12 @@ function Detalle({pala, onClose, iniciar, completar, addNota, retroceder}) {
             <div style={{background:'#111',border:'1px solid #333',borderRadius:16,padding:16,display:'flex',flexDirection:'column',gap:12}}>
               <textarea value={texto} onChange={e=>setTexto(e.target.value)} placeholder="Observación, anomalía o instrucción especial…" rows={3} style={{width:'100%',background:'#1a1a1a',border:'1px solid #444',borderRadius:10,padding:12,color:'white',fontSize:15,resize:'none'}}/>
               <div style={{display:'flex',flexWrap:'wrap',gap:8,alignItems:'center'}}>
-                <button onClick={()=>setTipo('info')}     style={{padding:'8px 14px',borderRadius:10,border:tipo==='info'?'2px solid #6366f1':'2px solid #333',background:tipo==='info'?'#1e1b4b':'#1a1a1a',color:tipo==='info'?'#818cf8':'#fff',fontWeight:600}}>📝 Informativa</button>
+                <button onClick={()=>setTipo('info')} style={{padding:'8px 14px',borderRadius:10,border:tipo==='info'?'2px solid #6366f1':'2px solid #333',background:tipo==='info'?'#1e1b4b':'#1a1a1a',color:tipo==='info'?'#818cf8':'#fff',fontWeight:600}}>📝 Informativa</button>
                 <button onClick={()=>setTipo('anomalia')} style={{padding:'8px 14px',borderRadius:10,border:tipo==='anomalia'?'2px solid #f87171':'2px solid #333',background:tipo==='anomalia'?'#2e0d0d':'#1a1a1a',color:tipo==='anomalia'?'#f87171':'#fff',fontWeight:600}}>⚠️ Anomalía</button>
                 <select value={autor} onChange={e=>setAutor(e.target.value)} style={{padding:'8px 12px',borderRadius:10,border:'2px solid #333',background:'#1a1a1a',color:'white',fontWeight:600}}>
                   {AUTORES.map(a=><option key={a} value={a}>{a}</option>)}
                 </select>
-                <button onClick={()=>{ if(!texto.trim()) return; addNota(pala.id,{texto:texto.trim(),tipo,autor}); setTexto(''); setTipo('info'); }} disabled={!texto.trim()} style={{padding:'8px 18px',borderRadius:10,background:texto.trim()?'#f5c518':'#333',color:texto.trim()?'#000':'#888',fontWeight:700,border:'none',marginLeft:'auto'}}>Guardar</button>
+                <button onClick={()=>{if(!texto.trim())return;addNota(pala.id,{texto:texto.trim(),tipo,autor});setTexto('');setTipo('info');}} disabled={!texto.trim()} style={{padding:'8px 18px',borderRadius:10,background:texto.trim()?'#f5c518':'#333',color:texto.trim()?'#000':'#888',fontWeight:700,border:'none',marginLeft:'auto'}}>Guardar</button>
               </div>
             </div>
           </div>
