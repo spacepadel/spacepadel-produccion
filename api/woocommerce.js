@@ -8,7 +8,7 @@ const SHOPIFY_TOKEN = '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';
 const WOO_MIN_ORDER = 1820;
 
 async function getWooOrders(limit = 50) {
-  const url = `${WOO_BASE}/orders?per_page=${limit}&orderby=date&order=desc&status=processing,on-hold,completed,pending`;
+  const url = `${WOO_BASE}/orders?per_page=${limit}&orderby=date&order=desc`;
   const res = await fetch(url, { headers: { 'Authorization': WOO_AUTH } });
   if (!res.ok) throw new Error(`WooCommerce error: ${res.status}`);
   const orders = await res.json();
@@ -16,71 +16,62 @@ async function getWooOrders(limit = 50) {
 }
 
 async function shopifyOrderExists(wooNumber) {
-  const query = `
-    query {
-      orders(first: 1, query: "tag:woo-${wooNumber}") {
-        edges { node { id name } }
-      }
-    }
-  `;
-  const res = await fetch(`https://${SHOPIFY_STORE}/admin/api/2024-04/graphql.json`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-Shopify-Access-Token': SHOPIFY_TOKEN
-    },
-    body: JSON.stringify({ query })
+  const url = `https://${SHOPIFY_STORE}/admin/api/2024-04/orders.json?tag=woo-${wooNumber}&status=any`;
+  const res = await fetch(url, {
+    headers: { 'X-Shopify-Access-Token': SHOPIFY_TOKEN }
   });
   if (!res.ok) throw new Error(`Shopify error comprobando duplicado: ${res.status}`);
   const data = await res.json();
-  const edges = data?.data?.orders?.edges || [];
-  return edges.length > 0 ? edges[0].node : null;
+  return data.orders && data.orders.length > 0 ? data.orders[0] : null;
 }
 
 async function createShopifyOrder(wooOrder) {
-  const mutation = `
-    mutation draftOrderCreate($input: DraftOrderInput!) {
-      draftOrderCreate(input: $input) {
-        draftOrder { id name }
-        userErrors { field message }
+  const body = {
+    order: {
+      email: wooOrder.billing?.email || '',
+      phone: wooOrder.billing?.phone || '',
+      note: `Pedido importado desde WooCommerce #${wooOrder.number} · spacepadel.es`,
+      tags: `woo-${wooOrder.number}, woocommerce, spacepadel.es`,
+      financial_status: 'paid',
+      line_items: (wooOrder.line_items || []).map(i => ({
+        title: i.name,
+        quantity: i.quantity,
+        price: parseFloat(i.price).toFixed(2)
+      })),
+      shipping_address: {
+        first_name: wooOrder.shipping?.first_name || wooOrder.billing?.first_name || '',
+        last_name:  wooOrder.shipping?.last_name  || wooOrder.billing?.last_name  || '',
+        address1:   wooOrder.shipping?.address_1  || wooOrder.billing?.address_1  || '',
+        city:       wooOrder.shipping?.city       || wooOrder.billing?.city       || '',
+        zip:        wooOrder.shipping?.postcode   || wooOrder.billing?.postcode   || '',
+        country:    wooOrder.shipping?.country    || wooOrder.billing?.country    || 'ES'
+      },
+      billing_address: {
+        first_name: wooOrder.billing?.first_name || '',
+        last_name:  wooOrder.billing?.last_name  || '',
+        address1:   wooOrder.billing?.address_1  || '',
+        city:       wooOrder.billing?.city       || '',
+        zip:        wooOrder.billing?.postcode   || '',
+        country:    wooOrder.billing?.country    || 'ES'
       }
     }
-  `;
-
-  const input = {
-    note: `Pedido importado desde WooCommerce #${wooOrder.number} · spacepadel.es`,
-    email: wooOrder.billing?.email || '',
-    phone: wooOrder.billing?.phone || '',
-    lineItems: (wooOrder.line_items || []).map(i => ({
-      title: i.name,
-      quantity: i.quantity,
-      originalUnitPrice: parseFloat(i.price).toFixed(2)
-    })),
-    shippingAddress: {
-      firstName:   wooOrder.shipping?.first_name  || wooOrder.billing?.first_name  || '',
-      lastName:    wooOrder.shipping?.last_name   || wooOrder.billing?.last_name   || '',
-      address1:    wooOrder.shipping?.address_1   || wooOrder.billing?.address_1   || '',
-      city:        wooOrder.shipping?.city        || wooOrder.billing?.city        || '',
-      zip:         wooOrder.shipping?.postcode    || wooOrder.billing?.postcode    || '',
-      countryCode: wooOrder.shipping?.country     || wooOrder.billing?.country     || 'ES'
-    },
-    tags: [`woo-${wooOrder.number}`, 'woocommerce', 'spacepadel.es']
   };
 
-  const res = await fetch(`https://${SHOPIFY_STORE}/admin/api/2024-04/graphql.json`, {
+  const res = await fetch(`https://${SHOPIFY_STORE}/admin/api/2024-04/orders.json`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'X-Shopify-Access-Token': SHOPIFY_TOKEN
     },
-    body: JSON.stringify({ query: mutation, variables: { input } })
+    body: JSON.stringify(body)
   });
 
-  if (!res.ok) throw new Error(`Shopify error: ${res.status}`);
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(JSON.stringify(err));
+  }
   const data = await res.json();
-  const errors = data?.data?.draftOrderCreate?.userErrors;
-  if (errors?.length) throw new Error(errors.map(e => e.message).join(', '));
-  return data?.data?.draftOrderCreate?.draftOrder;
+  return data.order;
 }
 
 export default async function handler(req, res) {
@@ -105,7 +96,7 @@ export default async function handler(req, res) {
             wooNumber: order.number,
             ok: true,
             skipped: true,
-            reason: `Ya existe en Shopify como ${existing.name}`
+            reason: `Ya existe en Shopify #${existing.order_number}`
           });
           continue;
         }
@@ -117,7 +108,7 @@ export default async function handler(req, res) {
             ok: true,
             skipped: false,
             shopifyId: shopifyOrder?.id,
-            shopifyName: shopifyOrder?.name
+            shopifyNumber: shopifyOrder?.order_number
           });
         } catch (e) {
           results.push({
