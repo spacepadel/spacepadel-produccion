@@ -217,23 +217,28 @@ function App() {
   }, [palas]);
 
   async function refreshOrders() {
-    setRefreshing(true);
-    setRefreshMsg('');
-    try {
-      const res = await fetch('/api/refresh');
-      const data = await res.json();
-      if (data.ok) {
-        setRefreshMsg(`✅ ${data.count} pedidos actualizados`);
-        setTimeout(() => window.location.reload(), 1000);
-      } else {
-        setRefreshMsg(`❌ Error: ${data.error}`);
-        setRefreshing(false);
-      }
-    } catch(e) {
-      setRefreshMsg(`❌ ${e.message}`);
+  setRefreshing(true);
+  setRefreshMsg('');
+  try {
+    const woo = await fetch('/api/woocommerce', { method: 'POST' });
+    const wooData = await woo.json();
+    const wooMsg = wooData.ok
+      ? `WooCommerce: ${wooData.created} nuevos, ${wooData.skipped} ya existían`
+      : `WooCommerce error: ${wooData.error}`;
+    const res = await fetch('/api/refresh');
+    const data = await res.json();
+    if (data.ok) {
+      setRefreshMsg(`✅ ${wooMsg} · Shopify: ${data.count} pedidos actualizados`);
+      setTimeout(() => window.location.reload(), 1000);
+    } else {
+      setRefreshMsg(`❌ Error: ${data.error}`);
       setRefreshing(false);
     }
+  } catch(e) {
+    setRefreshMsg(`❌ ${e.message}`);
+    setRefreshing(false);
   }
+}
 
   function iniciar(palaId, fId) {
     setPalas(p => { const x=p[palaId]; return {...p,[palaId]:{...x,lastModified:Date.now(),phases:x.phases.map(f=>f.id===fId?{...f,status:'en_proceso',startedAt:new Date().toISOString()}:f)}}; });
