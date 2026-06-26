@@ -7,8 +7,25 @@ const SHOPIFY_STORE = 'palaspersonalizadas.myshopify.com';
 const SHOPIFY_TOKEN = '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';
 const WOO_MIN_ORDER = 1820;
 
+// Limpia el teléfono para que Shopify lo acepte.
+// Si está vacío o no tiene dígitos suficientes, devuelve cadena vacía (Shopify acepta sin teléfono).
+function cleanPhone(phone) {
+  if (!phone) return '';
+  // Quitar todo excepto dígitos y el + inicial
+  let cleaned = phone.replace(/[^\d+]/g, '');
+  // Si ya empieza con + lo dejamos
+  if (cleaned.startsWith('+')) return cleaned;
+  // Si empieza con 00, convertir a +
+  if (cleaned.startsWith('00')) return '+' + cleaned.slice(2);
+  // Si es un número español de 9 dígitos, añadir +34
+  if (/^\d{9}$/.test(cleaned)) return '+34' + cleaned;
+  // Si tiene más dígitos pero sin prefijo, añadir +34
+  if (cleaned.length >= 9) return '+34' + cleaned;
+  // Si no podemos arreglarlo, devolvemos vacío para evitar el error
+  return '';
+}
+
 async function getWooOrders(limit = 50) {
-  // Traer pedidos en estado "processing" explícitamente
   const url = `${WOO_BASE}/orders?per_page=${limit}&orderby=date&order=desc&status=processing`;
   const res = await fetch(url, { headers: { 'Authorization': WOO_AUTH } });
   if (!res.ok) throw new Error(`WooCommerce error: ${res.status}`);
@@ -27,10 +44,12 @@ async function shopifyOrderExists(wooNumber) {
 }
 
 async function createShopifyOrder(wooOrder) {
+  const phone = cleanPhone(wooOrder.billing?.phone);
+
   const body = {
     order: {
       email: wooOrder.billing?.email || '',
-      phone: wooOrder.billing?.phone || '',
+      phone: phone,
       note: `Pedido importado desde WooCommerce #${wooOrder.number} · spacepadel.es`,
       tags: `woo-${wooOrder.number}, woocommerce, spacepadel.es`,
       financial_status: 'paid',
@@ -45,7 +64,8 @@ async function createShopifyOrder(wooOrder) {
         address1:   wooOrder.shipping?.address_1  || wooOrder.billing?.address_1  || '',
         city:       wooOrder.shipping?.city       || wooOrder.billing?.city       || '',
         zip:        wooOrder.shipping?.postcode   || wooOrder.billing?.postcode   || '',
-        country:    wooOrder.shipping?.country    || wooOrder.billing?.country    || 'ES'
+        country:    wooOrder.shipping?.country    || wooOrder.billing?.country    || 'ES',
+        phone:      phone,
       },
       billing_address: {
         first_name: wooOrder.billing?.first_name || '',
@@ -53,7 +73,8 @@ async function createShopifyOrder(wooOrder) {
         address1:   wooOrder.billing?.address_1  || '',
         city:       wooOrder.billing?.city       || '',
         zip:        wooOrder.billing?.postcode   || '',
-        country:    wooOrder.billing?.country    || 'ES'
+        country:    wooOrder.billing?.country    || 'ES',
+        phone:      phone,
       }
     }
   };
