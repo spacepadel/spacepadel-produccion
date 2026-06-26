@@ -1,54 +1,564 @@
-const SHOPIFY_TOKEN = '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';
-const SHOPIFY_STORE = 'palaspersonalizadas.myshopify.com';
-const SUPABASE_URL  = 'https://deafcxizysvbnbgailno.supabase.co';
-const SUPABASE_KEY  = 'sb_publishable_G1-WfUDe-Yq8aFxghbWYSA_Xxu7awui';
-const KEY_ORDERS    = 'sp-orders-v1'; // SOLO toca esta key, nunca sp-state-v1
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SPACEPADEL · Producción</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #0a0a0a; color: white; font-family: sans-serif; }
+    button { cursor: pointer; }
+    textarea { font-family: sans-serif; }
+  </style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect, useRef } = React;
 
-async function getOrders() {
-  const cutoff = new Date(Date.now() - 45 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-  const url = `https://${SHOPIFY_STORE}/admin/api/2026-04/orders.json?status=open&created_at_min=${cutoff}&limit=100&fields=id,name,created_at,cancel_reason,cancelled_at,financial_status,fulfillment_status,note,customer,line_items`;
-  const res = await fetch(url, {
-    headers: { 'X-Shopify-Access-Token': SHOPIFY_TOKEN }
-  });
-  const data = await res.json();
-  return (data.orders || [])
-    .filter(o => !o.cancelled_at && o.fulfillment_status !== 'fulfilled')
-    .map(o => ({
-      id: `gid://shopify/Order/${o.id}`,
-      name: o.name,
-      createdAt: o.created_at,
-      customerName: o.customer ? `${o.customer.first_name} ${o.customer.last_name}`.trim() : 'Cliente (invitado)',
-      financialStatus: o.financial_status.toUpperCase(),
-      fulfillmentStatus: (o.fulfillment_status || 'unfulfilled').toUpperCase(),
-      cancelledAt: o.cancelled_at || null,
-      note: o.note || null,
-      lineItems: o.line_items.map(l => ({ title: l.title, quantity: l.quantity }))
-    }));
-}
+const SUPABASE_URL = 'https://deafcxizysvbnbgailno.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_G1-WfUDe-Yq8aFxghbWYSA_Xxu7awui';
+const KEY_STATE    = 'sp-state-v1';
+const KEY_ORDERS   = 'sp-orders-v1';
 
-async function saveToSupabase(orders) {
-  const body = JSON.stringify({ key: KEY_ORDERS, value: JSON.stringify({ orders, modified: Date.now() }) });
-  await fetch(`${SUPABASE_URL}/rest/v1/kv`, {
-    method: 'POST',
-    headers: {
-      apikey: SUPABASE_KEY,
-      Authorization: `Bearer ${SUPABASE_KEY}`,
-      'Content-Type': 'application/json',
-      Prefer: 'resolution=merge-duplicates'
-    },
-    body
-  });
-}
-
-export default async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST');
-  if (req.method === 'OPTIONS') return res.status(200).end();
+async function dbGet(key) {
   try {
-    const orders = await getOrders();
-    await saveToSupabase(orders);
-    res.status(200).json({ ok: true, count: orders.length, orders });
-  } catch (e) {
-    res.status(500).json({ ok: false, error: e.message });
-  }
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/kv?key=eq.${key}&select=value`, {
+      headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` }
+    });
+    const rows = await r.json();
+    if (rows && rows.length) return JSON.parse(rows[0].value);
+  } catch(_) {}
+  try { return JSON.parse(localStorage.getItem(key)); } catch(_) { return null; }
 }
+
+async function dbSet(key, val) {
+  const body = JSON.stringify({ key, value: JSON.stringify(val) });
+  try {
+    await fetch(`${SUPABASE_URL}/rest/v1/kv`, {
+      method: 'POST',
+      headers: {
+        apikey: SUPABASE_KEY,
+        Authorization: `Bearer ${SUPABASE_KEY}`,
+        'Content-Type': 'application/json',
+        Prefer: 'resolution=merge-duplicates'
+      },
+      body
+    });
+  } catch(_) {}
+  try { localStorage.setItem(key, JSON.stringify(val)); } catch(_) {}
+}
+
+const FASES = [
+  { id:1,  nombre:'Moldeado',               responsable:'Estefanía' },
+  { id:2,  nombre:'Eliminación de rebabas', responsable:'Tadeo'     },
+  { id:3,  nombre:'Lijado 1',               responsable:'Tadeo'     },
+  { id:4,  nombre:'Imprimación',            responsable:'Juan Ángel'},
+  { id:5,  nombre:'Lijado 2',               responsable:'Tadeo'     },
+  { id:6,  nombre:'Pintura',                responsable:'Juan Ángel'},
+  { id:7,  nombre:'Diseño',                 responsable:'Juan Ángel'},
+  { id:8,  nombre:'Barnizado',              responsable:'Juan Ángel'},
+  { id:9,  nombre:'Empaquetado',            responsable:'Juan Ángel'},
+  { id:10, nombre:'Enviado',                responsable:'Juan Ángel'},
+];
+
+const TRABAJADORES = [
+  { nombre:'Estefanía',  fases:[1] },
+  { nombre:'Tadeo',      fases:[2,3,5] },
+  { nombre:'Juan Ángel', fases:[4,6,7,8,9,10] },
+];
+
+const AUTORES = ['Estefanía','Tadeo','Juan Ángel','Supervisor'];
+
+const ORDERS_FALLBACK = [
+  { id:'gid://shopify/Order/8544097993038', name:'#1548', createdAt:'2026-06-01T10:27:45Z', customerName:'Cliente (invitado)', financialStatus:'PENDING', fulfillmentStatus:'UNFULFILLED', cancelledAt:null, note:'luis 18k roja lagrima', lineItems:[{title:'pala personalizada luis',quantity:1}] },
+  { id:'gid://shopify/Order/8544065749326', name:'#1547', createdAt:'2026-06-01T10:13:08Z', customerName:'Cliente (invitado)', financialStatus:'PENDING', fulfillmentStatus:'UNFULFILLED', cancelledAt:null, note:null, lineItems:[{title:'pala junior boda',quantity:2}] },
+  { id:'gid://shopify/Order/8519371751758', name:'#1544', createdAt:'2026-05-25T02:08:25Z', customerName:'Matin Vera Bacovic', financialStatus:'PAID', fulfillmentStatus:'UNFULFILLED', cancelledAt:null, note:null, lineItems:[{title:'pala personalizada',quantity:1}] },
+  { id:'gid://shopify/Order/8556580208974', name:'#1556', createdAt:'2026-06-03T14:26:31Z', customerName:'Cliente (invitado)', financialStatus:'PAID', fulfillmentStatus:'UNFULFILLED', cancelledAt:null, note:'12k ctrl lagrima\n+34 654 33 00 47', lineItems:[{title:'pala personalizada',quantity:1}] },
+  { id:'gid://shopify/Order/8554856677710', name:'#1555', createdAt:'2026-06-03T05:42:07Z', customerName:'Cliente (invitado)', financialStatus:'PAID', fulfillmentStatus:'UNFULFILLED', cancelledAt:null, note:'junior de fibra de carbono', lineItems:[{title:'junior de carbono',quantity:1}] },
+  { id:'gid://shopify/Order/8554853892430', name:'#1554', createdAt:'2026-06-03T05:40:41Z', customerName:'Cliente (invitado)', financialStatus:'PAID', fulfillmentStatus:'UNFULFILLED', cancelledAt:null, note:'diamante 18k hybr', lineItems:[{title:'pala personalizada',quantity:1}] },
+  { id:'gid://shopify/Order/8554847863118', name:'#1553', createdAt:'2026-06-03T05:38:04Z', customerName:'Cliente (invitado)', financialStatus:'PAID', fulfillmentStatus:'UNFULFILLED', cancelledAt:null, note:'lagrima\n12k \nhybr', lineItems:[{title:'daniel marcelo',quantity:1}] },
+  { id:'gid://shopify/Order/8554844062030', name:'#1552', createdAt:'2026-06-03T05:36:23Z', customerName:'Cliente (invitado)', financialStatus:'PAID', fulfillmentStatus:'UNFULFILLED', cancelledAt:null, note:'regalo profesor', lineItems:[{title:'pala profesora',quantity:1}] },
+  { id:'gid://shopify/Order/8554841932110', name:'#1551', createdAt:'2026-06-03T05:35:29Z', customerName:'Cliente (invitado)', financialStatus:'PAID', fulfillmentStatus:'UNFULFILLED', cancelledAt:null, note:null, lineItems:[{title:'dani garcía',quantity:3}] },
+  { id:'gid://shopify/Order/8557274038606', name:'#1557', createdAt:'2026-06-03T18:27:47Z', customerName:'Cliente (invitado)', financialStatus:'PAID', fulfillmentStatus:'UNFULFILLED', cancelledAt:null, note:null, lineItems:[{title:'ENVÍO URGENTE',quantity:1}] },
+  { id:'gid://shopify/Order/8559631499598', name:'#1559', createdAt:'2026-06-04T17:47:14Z', customerName:'Cliente (invitado)', financialStatus:'PAID', fulfillmentStatus:'UNFULFILLED', cancelledAt:null, note:null, lineItems:[{title:'pala gratis',quantity:1}] },
+  { id:'gid://shopify/Order/8560829071694', name:'#1560', createdAt:'2026-06-05T06:06:51Z', customerName:'Cliente (invitado)', financialStatus:'PAID', fulfillmentStatus:'UNFULFILLED', cancelledAt:null, note:null, lineItems:[{title:'pala personalizada',quantity:1}] },
+  { id:'gid://shopify/Order/8568686051662', name:'#1562', createdAt:'2026-06-08T06:51:22Z', customerName:'Cliente (invitado)', financialStatus:'PENDING', fulfillmentStatus:'UNFULFILLED', cancelledAt:null, note:null, lineItems:[{title:'pala personalizada',quantity:1}] },
+  { id:'gid://shopify/Order/8568688017742', name:'#1563', createdAt:'2026-06-08T06:53:16Z', customerName:'Cliente (invitado)', financialStatus:'PAID', fulfillmentStatus:'UNFULFILLED', cancelledAt:null, note:null, lineItems:[{title:'pala personalizada',quantity:1}] },
+  { id:'gid://shopify/Order/8571556790606', name:'#1564', createdAt:'2026-06-09T06:42:05Z', customerName:'Cliente (invitado)', financialStatus:'PAID', fulfillmentStatus:'UNFULFILLED', cancelledAt:null, note:null, lineItems:[{title:'pala personalizada',quantity:1}] },
+  { id:'gid://shopify/Order/8571558658382', name:'#1565', createdAt:'2026-06-09T06:43:20Z', customerName:'Cliente (invitado)', financialStatus:'PAID', fulfillmentStatus:'UNFULFILLED', cancelledAt:null, note:null, lineItems:[{title:'pala personalizada',quantity:2}] },
+  { id:'gid://shopify/Order/8571559412046', name:'#1566', createdAt:'2026-06-09T06:43:51Z', customerName:'Cliente (invitado)', financialStatus:'PENDING', fulfillmentStatus:'UNFULFILLED', cancelledAt:null, note:null, lineItems:[{title:'pala personalizada',quantity:1}] },
+  { id:'gid://shopify/Order/8572261794126', name:'#1567', createdAt:'2026-06-09T12:35:14Z', customerName:'Cliente (invitado)', financialStatus:'PENDING', fulfillmentStatus:'UNFULFILLED', cancelledAt:null, note:null, lineItems:[{title:'pala personalizada',quantity:1}] },
+  { id:'gid://shopify/Order/8585298182478', name:'#1568', createdAt:'2026-06-11T18:40:31Z', customerName:'Cliente (invitado)', financialStatus:'PAID', fulfillmentStatus:'UNFULFILLED', cancelledAt:null, note:null, lineItems:[{title:'pala personalizada',quantity:1}] },
+  { id:'gid://shopify/Order/8585299853646', name:'#1569', createdAt:'2026-06-11T18:41:26Z', customerName:'Cliente (invitado)', financialStatus:'PENDING', fulfillmentStatus:'UNFULFILLED', cancelledAt:null, note:null, lineItems:[{title:'pala personalizada',quantity:1}] },
+  { id:'gid://shopify/Order/8585302966606', name:'#1570', createdAt:'2026-06-11T18:43:29Z', customerName:'Cliente (invitado)', financialStatus:'PAID', fulfillmentStatus:'UNFULFILLED', cancelledAt:null, note:null, lineItems:[{title:'pala personalizada',quantity:1}] },
+  { id:'gid://shopify/Order/8585312895310', name:'#1571', createdAt:'2026-06-11T18:49:19Z', customerName:'Cliente (invitado)', financialStatus:'PAID', fulfillmentStatus:'UNFULFILLED', cancelledAt:null, note:null, lineItems:[{title:'pala personalizada',quantity:1}] },
+  { id:'gid://shopify/Order/8585314894158', name:'#1572', createdAt:'2026-06-11T18:50:27Z', customerName:'Cliente (invitado)', financialStatus:'PAID', fulfillmentStatus:'UNFULFILLED', cancelledAt:null, note:null, lineItems:[{title:'pala personalizada',quantity:1}] },
+  { id:'gid://shopify/Order/8585328853326', name:'#1573', createdAt:'2026-06-11T18:55:27Z', customerName:'Cliente (invitado)', financialStatus:'PAID', fulfillmentStatus:'UNFULFILLED', cancelledAt:null, note:null, lineItems:[{title:'pala personalizada',quantity:2}] },
+  { id:'gid://shopify/Order/8589966016846', name:'#1574', createdAt:'2026-06-13T08:43:31Z', customerName:'Cliente (invitado)', financialStatus:'PAID', fulfillmentStatus:'UNFULFILLED', cancelledAt:null, note:null, lineItems:[{title:'pala personalizada',quantity:1}] },
+  { id:'gid://shopify/Order/8589972865358', name:'#1575', createdAt:'2026-06-13T08:45:49Z', customerName:'Cliente (invitado)', financialStatus:'PAID', fulfillmentStatus:'UNFULFILLED', cancelledAt:null, note:null, lineItems:[{title:'pala personalizada',quantity:1}] },
+  { id:'gid://shopify/Order/8609340850510', name:'#1576', createdAt:'2026-06-16T06:30:48Z', customerName:'Christophe POUTET', financialStatus:'PAID', fulfillmentStatus:'UNFULFILLED', cancelledAt:null, note:null, lineItems:[{title:'pala personalizada',quantity:1}] },
+];
+
+function buildPalas(orders, stored) {
+  const out = {};
+  orders.filter(o => o.fulfillmentStatus !== 'FULFILLED').forEach(order => {
+    let idx = 0;
+    (order.lineItems||[]).forEach(item => {
+      for (let i = 0; i < (item.quantity||1); i++) {
+        idx++;
+        const id = `${order.name}-P${idx}`;
+        const base = {
+          id, orderName:order.name, customer:order.customerName, product:item.title,
+          orderCreatedAt:order.createdAt, pago:order.financialStatus, shopifyNote:order.note||null,
+          lastModified: Date.now(),
+          phases: FASES.map(f => ({ id:f.id, status:'pendiente', startedAt:null, finishedAt:null })),
+          notes: [],
+        };
+        out[id] = stored[id]
+          ? { ...base, phases:stored[id].phases, notes:stored[id].notes, lastModified:stored[id].lastModified||base.lastModified }
+          : base;
+      }
+    });
+  });
+  return out;
+}
+
+function faseActualId(pala) {
+  const ep = pala.phases.find(p => p.status === 'en_proceso');
+  if (ep) return ep.id;
+  const pend = pala.phases.find(p => p.status === 'pendiente');
+  if (!pend) return null;
+  if (pend.id === 1) return 1;
+  const prev = pala.phases.find(p => p.id === pend.id - 1);
+  return prev?.status === 'completada' ? pend.id : null;
+}
+
+function estaCompletada(p) { return p.phases.every(f => f.status === 'completada'); }
+function debeOcultarse(p) {
+  if (!estaCompletada(p)) return false;
+  const fase10 = p.phases.find(f => f.id === 10);
+  if (!fase10?.finishedAt) return false;
+  return Date.now() - new Date(fase10.finishedAt).getTime() > 24 * 60 * 60 * 1000;
+}
+function progreso(p) { return Math.round(p.phases.filter(f => f.status === 'completada').length / FASES.length * 100); }
+function tieneAnomalia(p) { return p.notes.some(n => n.type === 'anomalia'); }
+function tieneInfo(p) { return p.notes.some(n => n.type === 'info'); }
+function fmt(ts) { if (!ts) return '—'; return new Date(ts).toLocaleString('es-ES',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}); }
+function fmtF(ts) { return new Date(ts).toLocaleDateString('es-ES',{day:'2-digit',month:'2-digit',year:'numeric'}); }
+function fmtH(ts) { if (!ts) return '—'; return new Date(ts).toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'}); }
+
+function Badge({status}) {
+  const S = { pendiente:{bg:'#222',color:'#aaa',border:'1px solid #444'}, en_proceso:{bg:'#3a2e00',color:'#f5c518',border:'1px solid #f5c518'}, completada:{bg:'#0d2e0d',color:'#4ade80',border:'1px solid #4ade80'} };
+  const dot = {pendiente:'#666',en_proceso:'#f5c518',completada:'#4ade80'};
+  const lbl = {pendiente:'Pendiente',en_proceso:'En proceso',completada:'Completada'};
+  return <span style={{...S[status],display:'inline-flex',alignItems:'center',gap:6,padding:'4px 12px',borderRadius:999,fontSize:14,fontWeight:600}}>
+    <span style={{width:10,height:10,borderRadius:'50%',background:dot[status],display:'inline-block'}}/>
+    {lbl[status]}
+  </span>;
+}
+function PagoBadge({pago}) {
+  if (pago !== 'PENDING') return null;
+  return <span style={{background:'#2e1a00',color:'#fb923c',border:'1px solid #fb923c',padding:'3px 10px',borderRadius:999,fontSize:12,fontWeight:600}}>💳 Pago pendiente</span>;
+}
+function Barra({pct}) {
+  return <div style={{width:'100%',background:'#222',borderRadius:999,height:12,overflow:'hidden'}}>
+    <div style={{width:`${pct}%`,height:12,background:pct===100?'#4ade80':'#f5c518',borderRadius:999,transition:'width 0.3s'}}/>
+  </div>;
+}
+function Iconos({pala}) {
+  return <span style={{display:'inline-flex',gap:4}}>
+    {tieneAnomalia(pala) && <span title="Anomalía">⚠️</span>}
+    {pala.shopifyNote && <span title={pala.shopifyNote}>💬</span>}
+    {tieneInfo(pala) && <span title="Nota interna">📝</span>}
+  </span>;
+}
+
+function App() {
+  const [palas, setPalas] = useState({});
+  const [vista, setVista] = useState('dashboard');
+  const [vistaSuper, setVistaSuper] = useState(false);
+  const [palaSel, setPalaSel] = useState(null);
+  const [trab, setTrab] = useState(TRABAJADORES[0].nombre);
+  const [saveStatus, setSave] = useState('idle');
+  const [saveTime, setSaveTime] = useState(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const [refreshMsg, setRefreshMsg] = useState('');
+  const appReady = useRef(false);
+
+  // Carga inicial desde Supabase
+  useEffect(() => {
+    (async () => {
+      try {
+        const [st, stOrders] = await Promise.all([dbGet(KEY_STATE), dbGet(KEY_ORDERS)]);
+        const storedPalas = st?.palas || {};
+        const ordersToUse = stOrders?.orders?.length ? stOrders.orders : ORDERS_FALLBACK;
+        setPalas(buildPalas(ordersToUse, storedPalas));
+      } catch(_) {
+        setPalas(buildPalas(ORDERS_FALLBACK, {}));
+      } finally {
+        setTimeout(() => { appReady.current = true; }, 500);
+      }
+    })();
+  }, []);
+
+  // Autosave cuando cambian las palas (solo después de que la app esté lista)
+  useEffect(() => {
+    if (!appReady.current) return;
+    if (!Object.keys(palas).length) return;
+    setSave('saving');
+    dbSet(KEY_STATE, { palas, modified: Date.now() }).then(() => {
+      setSave('saved');
+      setSaveTime(Date.now());
+    });
+  }, [palas]);
+
+  async function refreshOrders() {
+    setRefreshing(true);
+    setRefreshMsg('');
+    try {
+      // 1. Sincronizar WooCommerce → Shopify
+      await fetch('/api/woocommerce', { method: 'POST' });
+      // 2. Traer pedidos de Shopify a la app
+      const res = await fetch('/api/refresh');
+      const data = await res.json();
+      if (data.ok) {
+        setRefreshMsg(`✅ ${data.count} pedidos actualizados`);
+        setTimeout(() => window.location.reload(), 1000);
+      } else {
+        setRefreshMsg(`❌ Error: ${data.error}`);
+        setRefreshing(false);
+      }
+    } catch(e) {
+      setRefreshMsg(`❌ ${e.message}`);
+      setRefreshing(false);
+    }
+  }
+
+  function iniciar(palaId, fId) {
+    setPalas(p => { const x=p[palaId]; return {...p,[palaId]:{...x,lastModified:Date.now(),phases:x.phases.map(f=>f.id===fId?{...f,status:'en_proceso',startedAt:new Date().toISOString()}:f)}}; });
+  }
+  function completar(palaId, fId) {
+    setPalas(p => { const x=p[palaId]; return {...p,[palaId]:{...x,lastModified:Date.now(),phases:x.phases.map(f=>f.id===fId?{...f,status:'completada',finishedAt:new Date().toISOString()}:f)}}; });
+  }
+  function retroceder(palaId, faseId) {
+    setPalas(p => { const x=p[palaId]; return {...p,[palaId]:{...x,lastModified:Date.now(),phases:x.phases.map(f=>f.id===faseId?{...f,status:'pendiente',startedAt:null,finishedAt:null}:f.id===faseId-1?{...f,status:'pendiente',startedAt:null,finishedAt:null}:f)}}; });
+  }
+  function addNota(palaId, {texto,tipo,autor}) {
+    setPalas(p => {
+      const x=p[palaId]; const fId=faseActualId(x); const fase=FASES.find(f=>f.id===fId);
+      const nota={id:`${palaId}-${Date.now()}`,text:texto,type:tipo,author:autor,phaseId:fId,phaseName:fase?.nombre||'—',timestamp:new Date().toISOString()};
+      return {...p,[palaId]:{...x,lastModified:Date.now(),notes:[...x.notes,nota]}};
+    });
+  }
+  function cambiarFase(palaId, faseId) {
+    setPalas(p => { const x=p[palaId]; return {...p,[palaId]:{...x,lastModified:Date.now(),phases:x.phases.map(f=>f.id===faseId?{...f,status:'en_proceso',startedAt:new Date().toISOString(),finishedAt:null}:f.id<faseId?{...f,status:'completada',finishedAt:f.finishedAt||new Date().toISOString()}:{...f,status:'pendiente',startedAt:null,finishedAt:null})}}; });
+  }
+
+  const lista = Object.values(palas).filter(p => !debeOcultarse(p));
+  const saveDot = saveStatus==='saved'?'#4ade80':saveStatus==='saving'?'#f5c518':'#555';
+  const saveLbl = saveStatus==='saving'?'Guardando…':saveStatus==='saved'?`Guardado ${fmtH(saveTime)}`:'Sin cambios';
+
+  return (
+    <div style={{minHeight:'100vh',background:'#0a0a0a',color:'white'}}>
+      <header style={{background:'#111',borderBottom:'1px solid #333',position:'sticky',top:0,zIndex:20}}>
+        <div style={{maxWidth:900,margin:'0 auto',padding:'12px 16px',display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:12}}>
+          <div>
+            <div style={{fontSize:22,fontWeight:900,letterSpacing:2}}>SPACEPADEL</div>
+            <div style={{fontSize:12,color:'#888'}}>🛒 {lista.length} palas en producción</div>
+          </div>
+          <div style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}>
+            <div style={{display:'flex',alignItems:'center',gap:6,fontSize:12,color:'#888',background:'#1a1a1a',border:'1px solid #333',borderRadius:8,padding:'6px 10px'}}>
+              <span style={{width:8,height:8,borderRadius:'50%',background:saveDot,display:'inline-block'}}/>
+              {saveLbl}
+            </div>
+            <button onClick={refreshOrders} disabled={refreshing} style={{padding:'10px 18px',borderRadius:10,fontWeight:700,fontSize:15,border:'none',background:'#333',color:'#fff',opacity:refreshing?0.6:1}}>
+              {refreshing?'⏳ Actualizando…':'🔄 Actualizar pedidos'}
+            </button>
+            {refreshMsg && <span style={{fontSize:13,color:refreshMsg.startsWith('✅')?'#4ade80':'#f87171'}}>{refreshMsg}</span>}
+            <button onClick={()=>{setVista('dashboard');setVistaSuper(false);setPalaSel(null);}} style={{padding:'10px 18px',borderRadius:10,fontWeight:700,fontSize:15,border:'none',background:vista==='dashboard'&&!vistaSuper?'#f5c518':'#222',color:vista==='dashboard'&&!vistaSuper?'#000':'#fff'}}>📋 Dashboard</button>
+            <button onClick={()=>{setVista('trabajador');setVistaSuper(false);setPalaSel(null);}} style={{padding:'10px 18px',borderRadius:10,fontWeight:700,fontSize:15,border:'none',background:vista==='trabajador'&&!vistaSuper?'#f5c518':'#222',color:vista==='trabajador'&&!vistaSuper?'#000':'#fff'}}>👷 Por trabajador</button>
+            <button onClick={()=>{setVistaSuper(v=>!v);setPalaSel(null);}} style={{padding:'10px 18px',borderRadius:10,fontWeight:700,fontSize:15,border:'none',background:vistaSuper?'#9333ea':'#222',color:'#fff'}}>🔧 Supervisor</button>
+          </div>
+        </div>
+      </header>
+      <main style={{maxWidth:900,margin:'0 auto',padding:16}}>
+        {vistaSuper
+          ? <Supervisor palas={lista} onSelect={setPalaSel} cambiarFase={cambiarFase}/>
+          : vista==='dashboard'
+            ? <Dashboard palas={lista} onSelect={setPalaSel}/>
+            : <Trabajador palas={lista} trab={trab} setTrab={setTrab} onSelect={setPalaSel} iniciar={iniciar} completar={completar}/>
+        }
+      </main>
+      {palaSel && palas[palaSel] && (
+        <Detalle pala={palas[palaSel]} onClose={()=>setPalaSel(null)} iniciar={iniciar} completar={completar} addNota={addNota} retroceder={retroceder}/>
+      )}
+    </div>
+  );
+}
+
+function Dashboard({palas, onSelect}) {
+  const [busqueda, setBusqueda] = useState('');
+  const pedidos = {};
+  palas.forEach(p => {
+    if (!pedidos[p.orderName]) pedidos[p.orderName]={name:p.orderName,customer:p.customer,createdAt:p.orderCreatedAt,pago:p.pago,shopifyNote:p.shopifyNote,palas:[]};
+    pedidos[p.orderName].palas.push(p);
+  });
+  const todas = Object.values(pedidos).sort((a,b)=>new Date(a.createdAt)-new Date(b.createdAt));
+  const lista = busqueda.trim() ? todas.filter(p=>p.name.toLowerCase().includes(busqueda.toLowerCase())||p.customer?.toLowerCase().includes(busqueda.toLowerCase())) : todas;
+  const anomalias = palas.filter(p=>tieneAnomalia(p)).length;
+  return (
+    <div style={{display:'flex',flexDirection:'column',gap:16}}>
+      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(130px,1fr))',gap:12}}>
+        {[['Palas totales',palas.length,'#fff'],['En curso',palas.filter(p=>!estaCompletada(p)).length,'#f5c518'],['Anomalías',anomalias,'#f87171']].map(([l,v,c])=>(
+          <div key={l} style={{background:'#111',border:'1px solid #333',borderRadius:16,padding:16}}>
+            <div style={{fontSize:32,fontWeight:900,color:c}}>{v}</div>
+            <div style={{fontSize:13,color:'#888',marginTop:2}}>{l}</div>
+          </div>
+        ))}
+      </div>
+      <input value={busqueda} onChange={e=>setBusqueda(e.target.value)} placeholder="🔍 Buscar por número de pedido o cliente…" style={{width:'100%',background:'#111',border:'1px solid #444',borderRadius:12,padding:'12px 16px',color:'white',fontSize:15,boxSizing:'border-box'}}/>
+      {lista.map(ped => {
+        const tot=ped.palas.length*FASES.length;
+        const hec=ped.palas.reduce((a,p)=>a+p.phases.filter(f=>f.status==='completada').length,0);
+        const pct=Math.round(hec/tot*100);
+        return (
+          <div key={ped.name} style={{background:'#111',border:ped.shopifyNote?'1px solid #9333ea':'1px solid #333',borderRadius:16,padding:20}}>
+            <div style={{display:'flex',justifyContent:'space-between',flexWrap:'wrap',gap:8,marginBottom:12}}>
+              <div>
+                <div style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}>
+                  <span style={{fontSize:20,fontWeight:900}}>{ped.name}</span>
+                  <span style={{color:'#888'}}>{ped.customer}</span>
+                  <PagoBadge pago={ped.pago}/>
+                </div>
+                <div style={{fontSize:13,color:'#666',marginTop:2}}>Entrada: {fmtF(ped.createdAt)} · {ped.palas.length} pala{ped.palas.length>1?'s':''}</div>
+                {ped.shopifyNote && <div style={{marginTop:8,background:'#1e1030',borderLeft:'4px solid #9333ea',padding:'8px 12px',borderRadius:'0 8px 8px 0',fontSize:13,color:'#c084fc'}}>💬 {ped.shopifyNote}</div>}
+              </div>
+              <div style={{textAlign:'right'}}>
+                <div style={{fontSize:28,fontWeight:900,color:'#f5c518'}}>{pct}%</div>
+                <div style={{fontSize:12,color:'#666'}}>avance</div>
+              </div>
+            </div>
+            <Barra pct={pct}/>
+            <div style={{marginTop:12,display:'flex',flexDirection:'column',gap:6}}>
+              {ped.palas.map(pala => {
+                const fId=faseActualId(pala); const fase=FASES.find(f=>f.id===fId); const comp=estaCompletada(pala);
+                return (
+                  <button key={pala.id} onClick={()=>onSelect(pala.id)} style={{display:'flex',alignItems:'center',justifyContent:'space-between',background:'#1a1a1a',border:'1px solid #2a2a2a',borderRadius:10,padding:'10px 14px',color:'white',textAlign:'left',gap:8}}>
+                    <div style={{display:'flex',alignItems:'center',gap:8}}>
+                      <span style={{fontWeight:700}}>{pala.id}</span>
+                      <Iconos pala={pala}/>
+                      <span style={{color:'#888',fontSize:13}}>{pala.product}</span>
+                    </div>
+                    <div style={{display:'flex',alignItems:'center',gap:8,fontSize:13}}>
+                      <span style={{color:'#aaa'}}>{comp?'✅ Enviado':`Fase ${fId}: ${fase?.nombre||'—'}`}</span>
+                      <span style={{color:'#f5c518',fontWeight:600}}>Ver →</span>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function Trabajador({palas, trab, setTrab, onSelect, iniciar, completar}) {
+  function palasDe(n) {
+    return palas.filter(p=>{ const fId=faseActualId(p); if(!fId) return false; return FASES.find(f=>f.id===fId)?.responsable===n; }).sort((a,b)=>new Date(a.orderCreatedAt)-new Date(b.orderCreatedAt));
+  }
+  const cola = palasDe(trab);
+  return (
+    <div style={{display:'flex',flexDirection:'column',gap:16}}>
+      <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:10}}>
+        {TRABAJADORES.map(t => {
+          const n=palasDe(t.nombre).length; const activo=t.nombre===trab;
+          return (
+            <button key={t.nombre} onClick={()=>setTrab(t.nombre)} style={{borderRadius:14,padding:'14px 10px',textAlign:'center',border:activo?'2px solid #f5c518':'2px solid #333',background:activo?'#3a2e00':'#111',color:activo?'#f5c518':'#fff'}}>
+              <div style={{fontSize:17,fontWeight:700}}>{t.nombre}</div>
+              <div style={{fontSize:13,marginTop:2,color:activo?'#f5c518aa':'#888'}}>{n} pala{n!==1?'s':''}</div>
+            </button>
+          );
+        })}
+      </div>
+      {cola.length===0
+        ? <div style={{background:'#111',border:'1px solid #333',borderRadius:16,padding:40,textAlign:'center',color:'#666',fontSize:17}}>No hay palas para {trab} ahora mismo ✅</div>
+        : cola.map((pala,idx)=>{
+          const fId=faseActualId(pala); const faseObj=pala.phases.find(p=>p.id===fId); const fase=FASES.find(f=>f.id===fId);
+          return (
+            <div key={pala.id} style={{background:'#111',border:pala.shopifyNote?'1px solid #9333ea':'1px solid #333',borderRadius:16,padding:16}}>
+              <div style={{display:'flex',justifyContent:'space-between',flexWrap:'wrap',gap:8}}>
+                <div style={{display:'flex',alignItems:'center',gap:10}}>
+                  <span style={{background:'#f5c518',color:'#000',fontWeight:900,borderRadius:8,padding:'4px 10px',fontSize:14}}>#{idx+1}</span>
+                  <div>
+                    <div style={{display:'flex',alignItems:'center',gap:6}}><span style={{fontWeight:700,fontSize:17}}>{pala.id}</span><Iconos pala={pala}/></div>
+                    <div style={{fontSize:13,color:'#888'}}>{pala.product}</div>
+                    <div style={{fontSize:12,color:'#555'}}>entrada {fmtF(pala.orderCreatedAt)}</div>
+                  </div>
+                </div>
+                <div style={{textAlign:'right'}}><div style={{fontSize:12,color:'#888'}}>Fase {fId}</div><div style={{fontWeight:600}}>{fase.nombre}</div></div>
+              </div>
+              {pala.shopifyNote && <div style={{marginTop:10,background:'#1e1030',borderLeft:'4px solid #9333ea',padding:'8px 12px',borderRadius:'0 8px 8px 0',fontSize:13,color:'#c084fc'}}>💬 {pala.shopifyNote}</div>}
+              <div style={{marginTop:12,display:'flex',gap:8,flexWrap:'wrap',alignItems:'center'}}>
+                <Badge status={faseObj.status}/>
+                {faseObj.status!=='en_proceso'
+                  ? <button onClick={()=>iniciar(pala.id,fId)} style={{padding:'10px 18px',borderRadius:10,background:'#f5c518',color:'#000',fontWeight:700,border:'none',fontSize:15}}>▶ Iniciar</button>
+                  : <button onClick={()=>completar(pala.id,fId)} style={{padding:'10px 18px',borderRadius:10,background:'#4ade80',color:'#000',fontWeight:700,border:'none',fontSize:15}}>✓ Completar</button>
+                }
+                <button onClick={()=>onSelect(pala.id)} style={{padding:'10px 18px',borderRadius:10,background:'#222',color:'#fff',fontWeight:600,border:'1px solid #444',fontSize:15}}>Ver ficha</button>
+              </div>
+            </div>
+          );
+        })
+      }
+    </div>
+  );
+}
+
+function Supervisor({palas, onSelect, cambiarFase}) {
+  const [busqueda, setBusqueda] = useState('');
+  const lista = palas.filter(p=>!busqueda.trim()||p.id.toLowerCase().includes(busqueda.toLowerCase())||p.product.toLowerCase().includes(busqueda.toLowerCase())).sort((a,b)=>new Date(a.orderCreatedAt)-new Date(b.orderCreatedAt));
+  return (
+    <div style={{display:'flex',flexDirection:'column',gap:16}}>
+      <div style={{background:'#1e1030',border:'1px solid #9333ea',borderRadius:12,padding:12,fontSize:13,color:'#c084fc'}}>🔧 Modo supervisor — mueve cualquier pala a cualquier fase.</div>
+      <input value={busqueda} onChange={e=>setBusqueda(e.target.value)} placeholder="🔍 Buscar pala…" style={{width:'100%',background:'#111',border:'1px solid #444',borderRadius:12,padding:'12px 16px',color:'white',fontSize:15,boxSizing:'border-box'}}/>
+      {lista.map(pala => {
+        const fId=faseActualId(pala)||(estaCompletada(pala)?10:1); const faseActual=FASES.find(f=>f.id===fId);
+        return (
+          <div key={pala.id} style={{background:'#111',border:'1px solid #333',borderRadius:14,padding:14}}>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:8,marginBottom:10}}>
+              <div style={{display:'flex',alignItems:'center',gap:8}}>
+                <span style={{fontWeight:800,fontSize:16}}>{pala.id}</span>
+                <Iconos pala={pala}/>
+                <span style={{color:'#888',fontSize:13}}>{pala.product}</span>
+              </div>
+              <button onClick={()=>onSelect(pala.id)} style={{padding:'6px 12px',borderRadius:8,background:'#222',color:'#f5c518',border:'1px solid #f5c518',fontSize:13,fontWeight:600}}>Ver ficha</button>
+            </div>
+            <div style={{fontSize:13,color:'#888',marginBottom:8}}>Fase actual: <span style={{color:'#f5c518',fontWeight:700}}>{fId} — {faseActual?.nombre}</span> · {faseActual?.responsable}</div>
+            <div style={{display:'flex',flexWrap:'wrap',gap:6}}>
+              {FASES.map(f => {
+                const fase=pala.phases.find(p=>p.id===f.id); const esActual=f.id===fId;
+                return (
+                  <button key={f.id} onClick={()=>cambiarFase(pala.id,f.id)} style={{padding:'6px 10px',borderRadius:8,fontSize:12,fontWeight:600,border:'none',cursor:'pointer',background:esActual?'#f5c518':fase.status==='completada'?'#0d2e0d':'#222',color:esActual?'#000':fase.status==='completada'?'#4ade80':'#888'}}>
+                    {f.id}. {f.nombre.length>10?f.nombre.slice(0,10)+'…':f.nombre}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function Detalle({pala, onClose, iniciar, completar, addNota, retroceder}) {
+  const [texto,setTexto]=useState('');
+  const [tipo,setTipo]=useState('info');
+  const [autor,setAutor]=useState(AUTORES[0]);
+  const fId=faseActualId(pala); const comp=estaCompletada(pala);
+  const notas=[...pala.notes].sort((a,b)=>new Date(a.timestamp)-new Date(b.timestamp));
+  return (
+    <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.7)',zIndex:30,display:'flex',justifyContent:'flex-end'}}>
+      <div style={{background:'#0f0f0f',width:'100%',maxWidth:600,height:'100%',overflowY:'auto',borderLeft:'1px solid #333'}}>
+        <div style={{background:'#111',borderBottom:'1px solid #333',padding:'16px 20px',position:'sticky',top:0,zIndex:10,display:'flex',justifyContent:'space-between',alignItems:'flex-start'}}>
+          <div>
+            <div style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}>
+              <span style={{fontSize:22,fontWeight:900}}>{pala.id}</span>
+              <Iconos pala={pala}/>
+              <PagoBadge pago={pala.pago}/>
+            </div>
+            <div style={{fontSize:13,color:'#888',marginTop:2}}>{pala.orderName} · {pala.customer}</div>
+            <div style={{fontSize:13,color:'#666'}}>{pala.product} · {progreso(pala)}% completado</div>
+          </div>
+          <button onClick={onClose} style={{padding:'8px 14px',borderRadius:10,background:'#222',color:'#fff',border:'1px solid #444',fontWeight:700,fontSize:16}}>✕</button>
+        </div>
+        <div style={{padding:20,display:'flex',flexDirection:'column',gap:24}}>
+          {pala.shopifyNote && (
+            <div style={{background:'#1e1030',border:'2px solid #9333ea',borderRadius:16,padding:16}}>
+              <div style={{fontWeight:700,color:'#c084fc',marginBottom:6}}>💬 Nota del cliente</div>
+              <div style={{color:'#e9d5ff',whiteSpace:'pre-wrap'}}>{pala.shopifyNote}</div>
+            </div>
+          )}
+          {notas.length > 0 && (
+            <div>
+              <div style={{fontWeight:700,fontSize:16,marginBottom:10}}>📋 Notas e incidencias</div>
+              {notas.map(n=>(
+                <div key={n.id} style={{background:n.type==='anomalia'?'#2e0d0d':'#111',border:n.type==='anomalia'?'1px solid #f87171':'1px solid #333',borderRadius:12,padding:12,marginBottom:8}}>
+                  <div style={{display:'flex',justifyContent:'space-between',flexWrap:'wrap',gap:4,marginBottom:4}}>
+                    <div style={{display:'flex',alignItems:'center',gap:6}}>
+                      <span style={{fontWeight:700,fontSize:13}}>{n.author}</span>
+                      <span style={{fontSize:12,padding:'2px 8px',borderRadius:999,background:n.type==='anomalia'?'#3d1515':'#1e1b4b',color:n.type==='anomalia'?'#f87171':'#818cf8'}}>{n.type==='anomalia'?'⚠️ Anomalía':'📝 Info'}</span>
+                    </div>
+                    <span style={{fontSize:12,color:'#666'}}>{fmt(n.timestamp)}</span>
+                  </div>
+                  <div style={{color:'#ddd',whiteSpace:'pre-wrap'}}>{n.text}</div>
+                  <div style={{fontSize:12,color:'#555',marginTop:4}}>Fase: {n.phaseName}</div>
+                </div>
+              ))}
+            </div>
+          )}
+          <div>
+            <div style={{fontWeight:700,fontSize:17,marginBottom:12}}>Pipeline de producción</div>
+            <div style={{display:'flex',flexDirection:'column',gap:8}}>
+              {FASES.map(fase => {
+                const f=pala.phases.find(p=>p.id===fase.id); const esAct=fase.id===fId;
+                const bg=f.status==='completada'?'#0d2e0d':f.status==='en_proceso'?'#3a2e00':esAct?'#1a1a2e':'#1a1a1a';
+                const border=f.status==='completada'?'1px solid #4ade80':f.status==='en_proceso'?'1px solid #f5c518':esAct?'1px solid #6366f1':'1px solid #2a2a2a';
+                return (
+                  <div key={fase.id} style={{background:bg,border,borderRadius:12,padding:12}}>
+                    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:8}}>
+                      <div style={{display:'flex',alignItems:'center',gap:10}}>
+                        <span style={{width:36,height:36,borderRadius:'50%',background:f.status==='completada'?'#4ade80':f.status==='en_proceso'?'#f5c518':'#333',color:f.status==='completada'||f.status==='en_proceso'?'#000':'#fff',display:'flex',alignItems:'center',justifyContent:'center',fontWeight:700,fontSize:14}}>{f.status==='completada'?'✓':fase.id}</span>
+                        <div><div style={{fontWeight:600}}>{fase.nombre}</div><div style={{fontSize:12,color:'#888'}}>{fase.responsable}</div></div>
+                      </div>
+                      <div style={{display:'flex',alignItems:'center',gap:8}}>
+                        <Badge status={f.status}/>
+                        {f.status==='completada' && fase.id>1 && (
+                          <button onClick={()=>retroceder(pala.id,fase.id)} style={{padding:'4px 10px',borderRadius:8,background:'#333',color:'#f5c518',border:'1px solid #f5c518',fontSize:12,fontWeight:600}}>↩ Retroceder</button>
+                        )}
+                      </div>
+                    </div>
+                    {(f.startedAt||f.finishedAt) && (
+                      <div style={{marginTop:6,fontSize:12,color:'#888',display:'flex',gap:16,paddingLeft:46}}>
+                        {f.startedAt && <span>Inicio: {fmt(f.startedAt)}</span>}
+                        {f.finishedAt && <span>Fin: {fmt(f.finishedAt)}</span>}
+                      </div>
+                    )}
+                    {esAct && f.status==='pendiente' && <div style={{marginTop:8,paddingLeft:46}}><button onClick={()=>iniciar(pala.id,fase.id)} style={{padding:'8px 16px',borderRadius:10,background:'#f5c518',color:'#000',fontWeight:700,border:'none'}}>▶ Iniciar fase</button></div>}
+                    {esAct && f.status==='en_proceso' && <div style={{marginTop:8,paddingLeft:46}}><button onClick={()=>completar(pala.id,fase.id)} style={{padding:'8px 16px',borderRadius:10,background:'#4ade80',color:'#000',fontWeight:700,border:'none'}}>✓ Completar fase</button></div>}
+                  </div>
+                );
+              })}
+            </div>
+            {comp && <div style={{marginTop:12,background:'#0d2e0d',border:'1px solid #4ade80',borderRadius:12,padding:12,textAlign:'center',color:'#4ade80',fontWeight:600}}>✅ Pala completada y enviada</div>}
+          </div>
+          <div>
+            <div style={{fontWeight:700,fontSize:17,marginBottom:12}}>Añadir nota o incidencia</div>
+            <div style={{background:'#111',border:'1px solid #333',borderRadius:16,padding:16,display:'flex',flexDirection:'column',gap:12}}>
+              <textarea value={texto} onChange={e=>setTexto(e.target.value)} placeholder="Observación, anomalía o instrucción especial…" rows={3} style={{width:'100%',background:'#1a1a1a',border:'1px solid #444',borderRadius:10,padding:12,color:'white',fontSize:15,resize:'none'}}/>
+              <div style={{display:'flex',flexWrap:'wrap',gap:8,alignItems:'center'}}>
+                <button onClick={()=>setTipo('info')} style={{padding:'8px 14px',borderRadius:10,border:tipo==='info'?'2px solid #6366f1':'2px solid #333',background:tipo==='info'?'#1e1b4b':'#1a1a1a',color:tipo==='info'?'#818cf8':'#fff',fontWeight:600}}>📝 Informativa</button>
+                <button onClick={()=>setTipo('anomalia')} style={{padding:'8px 14px',borderRadius:10,border:tipo==='anomalia'?'2px solid #f87171':'2px solid #333',background:tipo==='anomalia'?'#2e0d0d':'#1a1a1a',color:tipo==='anomalia'?'#f87171':'#fff',fontWeight:600}}>⚠️ Anomalía</button>
+                <select value={autor} onChange={e=>setAutor(e.target.value)} style={{padding:'8px 12px',borderRadius:10,border:'2px solid #333',background:'#1a1a1a',color:'white',fontWeight:600}}>
+                  {AUTORES.map(a=><option key={a} value={a}>{a}</option>)}
+                </select>
+                <button onClick={()=>{if(!texto.trim())return;addNota(pala.id,{texto:texto.trim(),tipo,autor});setTexto('');setTipo('info');}} disabled={!texto.trim()} style={{padding:'8px 18px',borderRadius:10,background:texto.trim()?'#f5c518':'#333',color:texto.trim()?'#000':'#888',fontWeight:700,border:'none',marginLeft:'auto'}}>Guardar</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>
