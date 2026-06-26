@@ -17,7 +17,7 @@ async function getWooOrders(limit = 50) {
 }
 
 async function shopifyOrderExists(wooNumber) {
-  const url = `https://${SHOPIFY_STORE}/admin/api/2024-04/orders.json?tag=woo-${wooNumber}&status=any`;
+  const url = `https://${SHOPIFY_STORE}/admin/api/2026-04/orders.json?tag=woo-${wooNumber}&status=any`;
   const res = await fetch(url, {
     headers: { 'X-Shopify-Access-Token': SHOPIFY_TOKEN }
   });
@@ -58,7 +58,7 @@ async function createShopifyOrder(wooOrder) {
     }
   };
 
-  const res = await fetch(`https://${SHOPIFY_STORE}/admin/api/2024-04/orders.json`, {
+  const res = await fetch(`https://${SHOPIFY_STORE}/admin/api/2026-04/orders.json`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
