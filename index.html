@@ -220,8 +220,8 @@ function App() {
     setRefreshing(true);
     setRefreshMsg('');
     try {
-      // 1. Sincronizar WooCommerce → Shopify
-      await fetch('/api/woocommerce', { method: 'POST' });
+      // 1. Sincronizar WooCommerce → Shopify (no bloqueante, ignoramos errores)
+      try { await fetch('/api/woocommerce', { method: 'POST' }); } catch(_) {}
       // 2. Traer pedidos de Shopify a la app
       const res = await fetch('/api/refresh');
       const data = await res.json();
