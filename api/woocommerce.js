@@ -108,6 +108,7 @@ export default async function handler(req, res) {
       const skipped = results.filter(r => r.skipped).length;
       const failed  = results.filter(r => !r.ok).length;
 
+      console.log('WooCommerce sync:', JSON.stringify({ created, skipped, failed, results }));
       return res.status(200).json({ ok: true, created, skipped, failed, results });
     }
 
