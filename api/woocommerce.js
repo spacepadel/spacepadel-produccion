@@ -37,7 +37,7 @@ async function createShopifyOrder(wooOrder) {
       line_items: (wooOrder.line_items || []).map(i => ({
         title: i.name,
         quantity: i.quantity,
-        price: parseFloat(i.price).toFixed(2)
+        price: parseFloat(i.price) > 0 ? parseFloat(i.price).toFixed(2) : parseFloat(wooOrder.total || 0).toFixed(2)
       })),
       shipping_address: {
         first_name: wooOrder.shipping?.first_name || wooOrder.billing?.first_name || '',
