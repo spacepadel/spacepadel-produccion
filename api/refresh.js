@@ -5,7 +5,7 @@ const SUPABASE_KEY  = 'sb_publishable_G1-WfUDe-Yq8aFxghbWYSA_Xxu7awui';
 const KEY_ORDERS    = 'sp-orders-v1';
 
 async function getOrders() {
-  const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+  const cutoff = new Date(Date.now() - 45 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
   const url = `https://${SHOPIFY_STORE}/admin/api/2026-04/orders.json?status=open&created_at_min=${cutoff}&limit=100&fields=id,name,created_at,cancel_reason,cancelled_at,financial_status,fulfillment_status,note,customer,line_items`;
   const res = await fetch(url, {
     headers: { 'X-Shopify-Access-Token': SHOPIFY_TOKEN }
