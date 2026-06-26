@@ -8,7 +8,8 @@ const SHOPIFY_TOKEN = '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';
 const WOO_MIN_ORDER = 1820;
 
 async function getWooOrders(limit = 50) {
-  const url = `${WOO_BASE}/orders?per_page=${limit}&orderby=date&order=desc`;
+  // Traer pedidos en estado "processing" explícitamente
+  const url = `${WOO_BASE}/orders?per_page=${limit}&orderby=date&order=desc&status=processing`;
   const res = await fetch(url, { headers: { 'Authorization': WOO_AUTH } });
   if (!res.ok) throw new Error(`WooCommerce error: ${res.status}`);
   const orders = await res.json();
@@ -92,31 +93,14 @@ export default async function handler(req, res) {
       for (const order of orders) {
         const existing = await shopifyOrderExists(order.number);
         if (existing) {
-          results.push({
-            wooNumber: order.number,
-            ok: true,
-            skipped: true,
-            reason: `Ya existe en Shopify #${existing.order_number}`
-          });
+          results.push({ wooNumber: order.number, ok: true, skipped: true, reason: `Ya existe en Shopify #${existing.order_number}` });
           continue;
         }
-
         try {
           const shopifyOrder = await createShopifyOrder(order);
-          results.push({
-            wooNumber: order.number,
-            ok: true,
-            skipped: false,
-            shopifyId: shopifyOrder?.id,
-            shopifyNumber: shopifyOrder?.order_number
-          });
+          results.push({ wooNumber: order.number, ok: true, skipped: false, shopifyId: shopifyOrder?.id, shopifyNumber: shopifyOrder?.order_number });
         } catch (e) {
-          results.push({
-            wooNumber: order.number,
-            ok: false,
-            skipped: false,
-            error: e.message
-          });
+          results.push({ wooNumber: order.number, ok: false, skipped: false, error: e.message });
         }
       }
 
